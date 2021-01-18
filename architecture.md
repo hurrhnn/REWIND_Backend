@@ -8,6 +8,7 @@ HTTP 엔드포인트
 
 타입:
 handshake: 핸드쉐이크시 데이터 교환에 사용
+error: 뭐긴 뭐야 에러지 시발
 chat: 채팅
 {
 	"type": "send, edit 중 하나",
