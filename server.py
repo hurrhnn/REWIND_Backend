@@ -45,8 +45,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 "code": 10000,
                 "reason": "Binary data is not supported."
             })
-            self.sendMessage(payload, False)
-            return
+            return self.sendMessage(payload, False)
         print("Text message received: {0}".format(payload.decode('utf8')))
         data = json.loads(payload.decode('utf-8'))
         print(data)
@@ -56,8 +55,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     "code": 10001,
                     "reason": "Please finish the handshake first."
                 })
-                self.sendMessage(payload, False)
-                return
+                return self.sendMessage(payload, False)
             data = data['payload']
             token = data.get("auth")
             if token is None:
@@ -65,16 +63,14 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     "code": 10002,
                     "reason": "Token not provided."
                 })
-                self.sendMessage(payload, False)
-                return
+                return self.sendMessage(payload, False)
             jwt_body = jwt_decode(token)
             if not jwt_body:
                 payload = get_data("error", {
                     "code": 10002,
                     "reason": "Token signature mismatch."
                 })
-                self.sendMessage(payload, False)
-                return
+                return self.sendMessage(payload, False)
 
             # TODO: retrieve data from SQL
             self.sess_data = {}
@@ -85,10 +81,12 @@ class WINDServerProtocol(WebSocketServerProtocol):
             }
             friends = [{"id": 2, "name": "testuser2", "profile": None},
                        {"id": 3, "name": "tsetuser3", "profile": None}]
+
             payload = get_data("handshake", {
                 "user_info": self.sess_data['user'],
                 "friends": friends
             })
+            return self.sendMessage(payload, False)
 
         self.sendMessage(payload, False)
 
