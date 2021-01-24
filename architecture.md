@@ -9,6 +9,11 @@ HTTP 엔드포인트
 타입:
 handshake: 핸드쉐이크시 데이터 교환에 사용
 error: 뭐긴 뭐야 에러지 시발
+{
+	"code": "코드",
+	"reason": "이유"
+}
+heartbeat: 하트비트ㅇㅇ 페이로드에 있는 값은 돌려줌
 chat: 채팅
 {
 	"type": "send, edit 중 하나",
@@ -16,12 +21,14 @@ chat: 채팅
 	"chat_id": "채팅방 아이디",
 	"content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제"
 }
+
 user: 사용자
 {
 	"id": "아이디",
 	"name": "이름",
 	"profile": "(대충 프로필 주소 넣어주기)"
 }
+
 기본 데이터 틀:
 {
 	"type": "",
