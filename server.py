@@ -27,9 +27,25 @@ def jwt_decode(jwt, secret=b"testsecretkey"):
 
 def get_data(type, payload):
     return json.dumps({
-            "type": type,
-            "payload": payload
-        }).encode("utf8")
+        "type": type,
+        "payload": payload
+    }).encode("utf-8")
+
+
+def error(code, reason):
+    return get_data("error", {
+        "code": code,
+        "reason": reason
+    })
+
+
+def chat(type, user_id, chat_id, content):
+    return get_data("chat", {
+        "type": type,
+        "user_id": user_id,
+        "chat_id": chat_id,
+        "content": content
+    })
 
 
 class WINDServerProtocol(WebSocketServerProtocol):
@@ -46,82 +62,82 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
     def onMessage(self, payload, isBinary):
         if isBinary:
-            payload = get_data("error", {
-                "code": 10000,
-                "reason": "Binary data is not supported."
-            })
-            return self.sendMessage(payload, False)
+            return self.sendMessage(
+                error(10000, "Binary data not supported."),
+                False
+            )
 
-        data = json.loads(payload.decode('utf-8'))
-        print(data)
+        try:
+            data = json.loads(payload)
+        except ValueError:
+            return self.sendMessage(
+                error(10000, "Data should be JSON."),
+                False
+            )
 
-        if data['type'] == "heartbeat":
-            self.last_heartbeat = time.time()
+        _type = data.get("type")
+        data_payload = data.get("payload")
+        if not (_type or data_payload):
+            return self.sendMessage(
+                error(10000, "Invalid request."),
+                False
+            )
 
-        if not self.sess_data:
-            if data['type'] != "handshake":
-                payload = get_data("error", {
-                    "code": 10001,
-                    "reason": "Please finish the handshake first."
-                })
-                return self.sendMessage(payload, False)
-            data = data['payload']
-            token = data.get("auth")
-            if token is None:
-                payload = get_data("error", {
-                    "code": 10002,
-                    "reason": "Token not provided."
-                })
-                return self.sendMessage(payload, False)
-            jwt_body = jwt_decode(token)
-            if not jwt_body:
-                payload = get_data("error", {
-                    "code": 10002,
-                    "reason": "Token signature mismatch."
-                })
-                return self.sendMessage(payload, False)
+        handler = self.func_map.get(_type)
+        if handler is None:
+            return self.sendMessage(
+                error(10000, "Unknown type."),
+                False
+            )
 
-            # TODO: retrieve data from SQL
-            self.sess_data = {}
-            self.sess_data['user'] = {
-                "id": jwt_body['id'],
-                "name": jwt_body['name'],
-                "profile": None
-            }
-            friends = [{"id": 2, "name": "testuser2", "profile": None},
-                       {"id": 3, "name": "tsetuser3", "profile": None}]
+        return handler(self, data_payload)
 
-            payload = get_data("handshake", {
-                "user_info": self.sess_data['user'],
-                "friends": friends
-            })
-            clients.update({jwt_body['id']: self})
-            return self.sendMessage(payload, False)
+    def on_heartbeat(self, payload):
+        self.last_heartbeat = time.time()
+        return get_data("heartbeat", payload)
 
-        if data['type'] == "chat":
-            data = data['payload']
-            if data['type'] in ["send", "edit"]:
-                client = clients.get(data['chat_id'])
-                if client is None:
-                    payload = get_data("error", {
-                        "code": 10003,
-                        "reason": "Chatroom doesn't exist."
-                    })
-                    return self.sendMessage(payload, False)
-                payload = get_data("chat", {
-                    "type": data['type'],
-                    "user_id": self.sess_data['user']['id'],
-                    "chat_id": self.sess_data['user']['id'],
-                    "content": data['content']
-                })
-                client.sendMessage(payload)
-                payload['chat_id'] = data['chat_id']
-                return self.sendMessage(payload, False)
+    def on_handshake(self, payload):
+        # TODO: retrieve data from SQL
+        token = payload.get("auth")
+        if not token:
+            return error(10002, "Token not provided.")
+        jwt_body = jwt_decode(token)
+        if not jwt_body:
+            return error(10002, "Token signature mismatch.")
+        self.sess_data = dict()
+        self.sess_data['user'] = {
+            "id": jwt_body['id'],
+            "name": jwt_body['name'],
+            "profile": None
+        }
+        friends = [{"id": 2, "name": "testuser2", "profile": None},
+                   {"id": 3, "name": "tsetuser3", "profile": None}]
+        clients.update({jwt_body['id']: self})
+        return get_data("handshake", {
+            "user_info": self.sess_data['user'],
+            "friends": friends
+        })
 
-        self.sendMessage(payload, False)
+    def on_chat(self, payload):
+        _type = payload['type']
+        user_id = self.sess_data['user']['id']
+
+        if _type not in ["send", "edit"]:
+            return error(10003, "Unknown chat type.")
+        client = clients.get(payload['chat_id'])
+        if payload is None:
+            return error(10004, "Chatroom not found.")
+        client.sendMessage(chat(_type, user_id, user_id, payload['content']))
+        return chat(_type, user_id, payload['chat_id'], payload['content'])
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
+
+    func_map = {
+        "heartbeat": on_heartbeat,
+        "handshake": on_handshake,
+        "chat": on_chat
+    }
 
 
 if __name__ == '__main__':
