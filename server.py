@@ -1,6 +1,5 @@
-from autobahn.twisted.websocket import WebSocketServerFactory
-
 from websocket.protocol import WINDServerProtocol
+from websocket.factory import WINDServerFactory
 
 if __name__ == '__main__':
 
@@ -11,7 +10,7 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
 
-    factory = WebSocketServerFactory("ws://127.0.0.1:9000")
+    factory = WINDServerFactory("ws://0.0.0.0:9000")
     factory.protocol = WINDServerProtocol
     # factory.setProtocolOptions(maxConnections=2)
 

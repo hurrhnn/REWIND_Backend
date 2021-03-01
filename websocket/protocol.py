@@ -7,9 +7,6 @@ import json
 import time
 
 
-clients = {}
-
-
 class WINDServerProtocol(WebSocketServerProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,6 +18,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
     def onOpen(self):
         print("WebSocket connection open.")
+        self.factory.register(self)
 
     def onMessage(self, payload, isBinary):
         if isBinary:
@@ -45,7 +43,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 False
             )
 
-        handler = self.func_map.get(_type)
+        handler = self.func_map.get(f"on_{_type}")
         if handler is None:
             return self.sendMessage(
                 error(10000, "Unknown type."),
@@ -58,7 +56,12 @@ class WINDServerProtocol(WebSocketServerProtocol):
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
 
+    def connectionLost(self, reason):
+        super(WebSocketServerProtocol, self).connectionLost(self, reason)
+        self.factory.unregister(self)
+
     def on_heartbeat(self, payload):
+        # TODO: Check heartbeat
         self.last_heartbeat = time.time()
         return get_data("heartbeat", payload)
 
@@ -96,9 +99,3 @@ class WINDServerProtocol(WebSocketServerProtocol):
             return error(10004, "Chatroom not found.")
         client.sendMessage(chat(_type, user_id, user_id, payload['content']))
         return chat(_type, user_id, payload['chat_id'], payload['content'])
-
-    func_map = {
-        "heartbeat": on_heartbeat,
-        "handshake": on_handshake,
-        "chat": on_chat
-    }
