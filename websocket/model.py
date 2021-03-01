@@ -36,40 +36,40 @@ class User(Base):
     )
 
     password = Column(
-    	String(100),
-    	nullable=False
-	)
+        String(100),
+        nullable=False
+    )
 
-	server = Column(  # JSON으로 처리하기
-		Text,
-		nullable=False
-	)
+    server = Column(  # JSON으로 처리하기
+        Text,
+        nullable=False
+    )
 
     def __repr__(self):
         return f"<User idx={self.idx}, name={self.name!r}>"
 
 
 class Private(Base):
-	__tablename__ = "private"
+    __tablename__ = "private"
 
-	server = Column(   # 보내는 사람
-		Integer,
-		nullable=False
-	)
+    server = Column(   # 보내는 사람
+        Integer,
+        nullable=False
+    )
 
-	client = Column(   # 받는 사람
-		Integer,
-		nullable=False
-	)
+    client = Column(   # 받는 사람
+        Integer,
+        nullable=False
+    )
 
-	content = Column(
-		Text
-	)
+    content = Column(
+        Text
+    )
 
-	fileid = Column(
-		Integer,
-		nullable=False
-	)
+    fileid = Column(
+        Integer,
+        nullable=False
+    )
 
     def __repr__(self):
         return f"<Private server={self.server}, client={self.client}>"
@@ -87,10 +87,10 @@ class Room(Base):
     )
 
     title = Column(
-    	String(32),
-    	nullable=False,
-    	default="New Server"
-	)
+        String(32),
+        nullable=False,
+        default="New Server"
+    )
 
     create = Column(
         DateTime,
@@ -108,43 +108,43 @@ class Room(Base):
 
 
 class Chat(Base):
-	__tablename__ = "chat"
+    __tablename__ = "chat"
 
-	idx = Column(
-		Integer,
-		unique=True,
-		primary_key=True,
-		nullable=False
-	)
+    idx = Column(
+        Integer,
+        unique=True,
+        primary_key=True,
+        nullable=False
+    )
 
-	room = Column(
-		Integer,
-		nullable=False
-	)
+    room = Column(
+        Integer,
+        nullable=False
+    )
 
-	author = Column(
-		Integer,
-		nullable=False
-	)
+    author = Column(
+        Integer,
+        nullable=False
+    )
 
-	timestamp = Column(
-		DateTime,
-		nullable=False,
-		default=func.now()
-	)
+    timestamp = Column(
+        DateTime,
+        nullable=False,
+        default=func.now()
+    )
 
-	content = Column(
-		Text
-	)
+    content = Column(
+        Text
+    )
 
     def __repr__(self):
         return f"<Private idx={self.idx}, roon={self.room}>"
 
 
 class Ban(Base):
-	__tablename__ = "ban"
+    __tablename__ = "ban"
 
-	idx = Column(
+    idx = Column(
         Integer,
         unique=True,
         primary_key=True,
@@ -162,10 +162,10 @@ class Ban(Base):
     )
 
     why = Column(
-    	String(2000),
-    	nullable=False,
-    	default="No reason."
-	)
+        String(2000),
+        nullable=False,
+        default="No reason."
+    )
 
     def __repr__(self):
         return f"<Ban idx={self.idx}, user={self.user},room={self.room}>"
