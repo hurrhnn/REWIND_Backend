@@ -57,7 +57,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
         print("WebSocket connection closed: {0}".format(reason))
 
     def connectionLost(self, reason):
-        super(WebSocketServerProtocol, self).connectionLost(self, reason)
+        super(WebSocketServerProtocol, self).connectionLost(reason)
         self.factory.unregister(self)
 
     def on_heartbeat(self, payload):
