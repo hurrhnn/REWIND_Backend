@@ -1,19 +1,3 @@
-<<<<<<< HEAD
-from flask import Blueprint
-
-callname = __name__.rsplit(".", 1)[-1]
-
-bp = Blueprint(
-    name=callname,
-    import_name=__name__,
-    url_prefix="/"
-)
-
-
-@bp.route('/')
-def test():
-    return "This is a test Index Page!"
-=======
 from flask import Blueprint, request, Response, redirect, render_template, session, url_for, json, flash
 
 from flask_sqlalchemy import SQLAlchemy
@@ -31,12 +15,14 @@ bp = Blueprint(
     url_prefix="/"
 )
 
+
 @bp.route('/')
 def index():
     print(session['logined'])
-    if session['logined'] == False:
+    if not session['logined']:
         return redirect(url_for('index.login'))
     return render_template('index.html')
+
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -50,7 +36,7 @@ def login():
 
             token = jwt_encode(json.loads(str(data)))
 
-            obj = json.dumps({'type': 'authentication', 'payload': {'token': token} }, ensure_ascii=False).encode('utf8')
+            obj = json.dumps({'type': 'authentication', 'payload': {'token': token}}, ensure_ascii=False).encode('utf8')
 
             if data is not None:
                 session['logined'] = True
@@ -61,6 +47,7 @@ def login():
             print(e)
             return Response(status=401)
 
+
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -68,14 +55,14 @@ def register():
             name = request.form['name']
             email = request.form['email']
             password = request.form['password']
-            
-            newUser = User(name=name, email=email, password=password)
-            
+
+            new_user = User(name=name, email=email, password=password)
+
             if User.query.filter(User.email == email).first() is not None:
                 flash('이메일이 이미 존재합니다')
                 return render_template('register.html')
 
-            db_session.add(newUser)
+            db_session.add(new_user)
             db_session.commit()
             return redirect(url_for('index.login'))
         except Exception as e:
@@ -83,9 +70,9 @@ def register():
             return Response(status=401)
     return render_template('register.html')
 
+
 @bp.route('/logout')
 def logout():
     flash("Logout!!")
     session['logined'] = False
     return redirect(url_for('index.index'))
->>>>>>> master

@@ -1,19 +1,8 @@
-<<<<<<< HEAD
-from flask import Flask
-
-
-def create_app():
-    app = Flask(__name__)
-
-    from web import views
-    for vp in views.__all__:
-        app.register_blueprint(getattr(views, vp).bp)
-    return app
-=======
 from flask import Flask
 from websocket.model import db
 
 from util import secret
+
 
 def create_app():
     app = Flask(__name__)
@@ -25,4 +14,3 @@ def create_app():
     for vp in views.__all__:
         app.register_blueprint(getattr(views, vp).bp)
     return app
->>>>>>> master
