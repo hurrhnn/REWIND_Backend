@@ -1,10 +1,12 @@
-from autobahn.twisted.websocket import WebSocketServerProtocol
-
-from websocket.util import get_data, error, chat
-from util import jwt_decode
-
 import json
 import time
+
+from autobahn.twisted.websocket import WebSocketServerProtocol
+
+from util import jwt_decode
+from websocket.util import get_data, error, chat
+
+clients = {}
 
 
 class WINDServerProtocol(WebSocketServerProtocol):
@@ -43,8 +45,9 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 False
             )
 
-        handler = self.func_map.get(f"on_{_type}")
+        handler = self.func_map.get(f"{_type}")
         if handler is None:
+            print(_type)
             return self.sendMessage(
                 error(10000, "Unknown type."),
                 False
@@ -80,8 +83,11 @@ class WINDServerProtocol(WebSocketServerProtocol):
             "name": jwt_body['name'],
             "profile": None
         }
-        friends = [{"id": 2, "name": "testuser2", "profile": None},
+        friends = [{"id": 1, "name": "hurrhnn", "profile": None},
+                   {"id": 2, "name": "chick_0", "profile": None},
                    {"id": 3, "name": "tsetuser3", "profile": None}]
+
+        friends.remove({"id": jwt_body['id'], "name": jwt_body['name'], "profile": None})
         clients.update({jwt_body['id']: self})
         return get_data("handshake", {
             "user_info": self.sess_data['user'],
@@ -99,3 +105,9 @@ class WINDServerProtocol(WebSocketServerProtocol):
             return error(10004, "Chatroom not found.")
         client.sendMessage(chat(_type, user_id, user_id, payload['content']))
         return chat(_type, user_id, payload['chat_id'], payload['content'])
+
+    func_map = {
+        "heartbeat": on_heartbeat,
+        "handshake": on_handshake,
+        "chat": on_chat
+    }
