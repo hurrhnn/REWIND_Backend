@@ -1,3 +1,9 @@
+# WIND-NG
+### DJango -> FLASK  & Autobahn 프로젝트 
+
+---
+### 구현이 완료된 것들:
+
 ```json
 <HTTP 엔드포인트>
 
@@ -50,9 +56,13 @@ Server:
 type handshake
 payload {
 	"user_info": "user오브젝트를 쳐 박으새오!",
-	"friends": ["대충 친구 목록이라는 챗"]
+	"friends": ["DB에서 친구 목록 가져옴"]
 }
 
 <내부 DB>
--추가 요망-
+/register(POST) -> DB
+DB -> /login(POST)
+friends를 불러올 때 DB 사용
+
+채팅을 DB에 저장: 구현 중
 ```
