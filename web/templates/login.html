@@ -1,8 +1,8 @@
 <body>
     {% extends "default.html" %}
     {% block content %}
-    {% if session['logged_in'] %}
-    <p>You're logged in already!</p>
+    {% if session['logined'] %}
+    <script>alert("You're logged in already!");</script>
     {% else %}
     <h2>Login</h2>
     <form action="/login" method="POST">
@@ -10,7 +10,8 @@
         <input type="password" name="password" placeholder="Password">
         <input type="submit" value="Log in">
     </form>
-
+    <br>
+    <a href="{{ url_for('index.login') }}">Don't you have an account? Make it for free!!</a>
     {% endif %}
     {% endblock %}
 </body>

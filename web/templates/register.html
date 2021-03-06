@@ -1,9 +1,6 @@
 <body>
     {% extends "default.html" %}
     {% block content %}
-    {% if session['logged_in'] %}
-    <p>You're logged in already!</p>
-    {% else %}
     <h2>Register</h2>
     <form action="/register" method="POST">
         <input type="name" name="name" placeholder="Name"><br>
@@ -11,6 +8,7 @@
         <input type="password" name="password" placeholder="Password"><br>
         <input type="submit" value="Register">
     </form>
+    <br>
     
     {% with messages = get_flashed_messages() %}
         {% if messages %}

@@ -1,10 +1,11 @@
 from flask import Flask
 from websocket.model import db
-import secrets
+
+from util import secret
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = secrets.token_hex(32)
+    app.config['SECRET_KEY'] = secret()
 
     db.init_app(app=app)
 

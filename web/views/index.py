@@ -15,10 +15,12 @@ bp = Blueprint(
     url_prefix="/"
 )
 
-@bp.route('/', methods=['GET', 'POST'])
+@bp.route('/')
 def index():
+    print(session['logined'])
+    if session['logined'] == False:
+        return redirect(url_for('index.login'))
     return "This is a test Index Page!"
-
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -35,7 +37,7 @@ def login():
             obj = json.dumps({'type': 'authentication', 'payload': {'token': token} }, ensure_ascii=False).encode('utf8')
 
             if data is not None:
-                # session['logged_in'] = True
+                session['logined'] = True
                 return Response(response=obj, status=201, content_type='application/json')
             else:
                 return Response(status=401)
@@ -54,7 +56,7 @@ def register():
             newUser = User(name=name, email=email, password=password)
             
             if User.query.filter(User.email == email).first() is not None:
-                flash('이메일이 존재합니다')
+                flash('이메일이 이미 존재합니다')
                 return render_template('register.html')
 
             db_session.add(newUser)
@@ -64,4 +66,3 @@ def register():
             print(e)
             return Response(status=401)
     return render_template('register.html')
-        

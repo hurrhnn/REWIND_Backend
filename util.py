@@ -25,3 +25,6 @@ def jwt_encode(body, secret=b"testsecretkey"):
                   + base64.urlsafe_b64encode(bytes((json.dumps(body, separators=(',', ':'))), "UTF-8")).decode("UTF-8")
     sig = base64.urlsafe_b64encode(hmac.digest(secret, body_verify.rstrip("=").encode(), digest="sha256"))
     return b64_rem(body_verify) + '.' + b64_rem(sig.decode("UTF-8"))
+
+def secret():
+    return jwt_encode({"id":-99999, "name":"SecretAdmin"})
