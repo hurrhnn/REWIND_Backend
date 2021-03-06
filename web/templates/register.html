@@ -1,0 +1,20 @@
+<body>
+    {% extends "default.html" %}
+    {% block content %}
+    <h2>Register</h2>
+    <form action="/register" method="POST">
+        <input type="name" name="name" placeholder="Name"><br>
+        <input type="email" name="email" placeholder="Email"><br>
+        <input type="password" name="password" placeholder="Password"><br>
+        <input type="submit" value="Register">
+    </form>
+    <br>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <script>alert("{{messages[-1]}}")</script>
+        {% endif %}
+    {% endwith %}
+
+    {% endblock %}
+</body>
