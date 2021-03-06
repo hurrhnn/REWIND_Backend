@@ -1,10 +1,10 @@
 ```json
-HTTP 엔드포인트
+<HTTP 엔드포인트>
 
--===인증===-
-/token - 토큰을 쳐 받음, Basic으로 인증하던지 알아서 해봐
-
-웹소켓
+/register - 뭐긴 뭐야 회원가입 하는 곳이지(POST)
+/login - 로그인 하는 API (POST인데 나중에 GET으로 바꿀꺼, OK: 201와 Token, FAIL: 401)
+        
+<웹소켓>
 
 타입:
 handshake: 핸드쉐이크시 데이터 교환에 사용
@@ -13,7 +13,10 @@ error: 뭐긴 뭐야 에러지 시발
 	"code": "코드",
 	"reason": "이유"
 }
-heartbeat: 하트비트ㅇㅇ 페이로드에 있는 값은 돌려줌
+
+heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려줌
+ㄴ heartbeat timeout이면 Websocket Closed 시키는 거 좀 만들자 
+
 chat: 채팅
 {
 	"type": "send, edit 중 하나",
@@ -34,6 +37,7 @@ user: 사용자
 	"type": "",
 	"payload": ""
 }
+        
 유저 정보:
 -===악수===-
 Client:
@@ -41,10 +45,14 @@ type handshake
 payload {
 	"auth": "대충 토큰을 쳐 박으새오"
 }
+        
 Server:
 type handshake
 payload {
 	"user_info": "user오브젝트를 쳐 박으새오!",
 	"friends": ["대충 친구 목록이라는 챗"]
 }
+
+<내부 DB>
+-추가 요망-
 ```
