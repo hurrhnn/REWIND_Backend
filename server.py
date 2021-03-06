@@ -14,7 +14,7 @@ import sys
 if __name__ == '__main__':
     log.startLogging(sys.stdout)
 
-    ws_factory = WINDServerFactory("ws://127.0.0.1:8080")
+    ws_factory = WINDServerFactory("ws://hurrhnn.xyz:9000")
     ws_factory.protocol = WINDServerProtocol
     ws_res = WebSocketResource(ws_factory)
 
@@ -27,5 +27,5 @@ if __name__ == '__main__':
     web_root_res = WSGIRootResource(web_res, {b'ws': ws_res, b'api': api_res})
     web_site = Site(web_root_res)
 
-    reactor.listenTCP(8080, web_site)
+    reactor.listenTCP(9000, web_site)
     reactor.run()
