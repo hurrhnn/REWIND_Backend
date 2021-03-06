@@ -1,8 +1,7 @@
 # WIND-NG
-### DJango -> FLASK  & Autobahn 프로젝트 
+### DJango -> FLASK  & Autobahn 프로젝트<br>
 
----
-### 구현이 완료된 것들:
+#### 구현이 완료된 것들:
 
 ```json
 <HTTP 엔드포인트>
