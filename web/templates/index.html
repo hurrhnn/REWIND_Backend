@@ -1,0 +1,9 @@
+<body>
+    {% extends "default.html" %}
+    {% block content %}
+    {% if session['logined'] %}
+        <p>You're already logged in</p>
+        <a href="{{ url_for('index.logout') }}">Logout</a>
+    {% endif %}
+    {% endblock %}
+</body>

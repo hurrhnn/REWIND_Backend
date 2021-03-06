@@ -20,7 +20,7 @@ def index():
     print(session['logined'])
     if session['logined'] == False:
         return redirect(url_for('index.login'))
-    return "This is a test Index Page!"
+    return render_template('index.html')
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -66,3 +66,9 @@ def register():
             print(e)
             return Response(status=401)
     return render_template('register.html')
+
+@bp.route('/logout')
+def logout():
+    flash("Logout!!")
+    session['logined'] = False
+    return redirect(url_for('index.index'))
