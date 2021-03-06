@@ -1,5 +1,5 @@
 from flask import Flask
-from websocket.model import db
+from websocket.share import db
 
 from util import secret
 
