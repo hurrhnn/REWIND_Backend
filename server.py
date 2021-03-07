@@ -9,7 +9,7 @@ import web
 from websocket.protocol import WINDServerProtocol
 from websocket.factory import WINDServerFactory
 
-from db.database import init_db
+from db.initialize_db import init_db
 
 import sys
 
@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     init_db()
 
-    ws_factory = WINDServerFactory("ws://192.168.64.2:9000")
+    ws_factory = WINDServerFactory("ws://rarp.kr:9000")
     ws_factory.protocol = WINDServerProtocol
     ws_res = WebSocketResource(ws_factory)
 

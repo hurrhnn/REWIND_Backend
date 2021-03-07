@@ -5,8 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import Integer, String, Text, DateTime
 from sqlalchemy import func
 
-from db.database import Base
-
+from db.initialize_db import Base
 
 class User(Base):
     __tablename__ = "user"
