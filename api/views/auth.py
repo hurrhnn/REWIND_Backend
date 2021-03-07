@@ -34,21 +34,20 @@ def login():
 
 @bp.route('/register', methods=['POST'])
 def register():
-    if request.method == 'POST':
-        try:
-            name = request.form['name']
-            email = request.form['email']
-            password = request.form['password']
+    try:
+        name = request.form['name']
+        email = request.form['email']
+        password = request.form['password']
 
-            new_user = User(name=name, email=email, password=password)
+        new_user = User(name=name, email=email, password=password)
 
-            if User.query.filter(User.email == email).first() is not None:
-                flash('이메일이 이미 존재합니다')
-                return Response(status=400)
+        if User.query.filter(User.email == email).first() is not None:
+            flash('이메일이 이미 존재합니다')
+            return Response(status=400)
 
-            db_session.add(new_user)
-            db_session.commit()
-            return Response(status=200)
-        except Exception as e:
-            print(e)
-            return Response(status=401)
+        db_session.add(new_user)
+        db_session.commit()
+        return Response(status=200)
+    except Exception as e:
+        print(e)
+        return Response(status=401)
