@@ -42,7 +42,6 @@ def register():
         new_user = User(name=name, email=email, password=password)
 
         if User.query.filter(User.email == email).first() is not None:
-            flash('이메일이 이미 존재합니다')
             return Response(status=400)
 
         db_session.add(new_user)
