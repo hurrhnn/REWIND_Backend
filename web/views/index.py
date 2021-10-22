@@ -18,9 +18,9 @@ bp = Blueprint(
 
 @bp.route('/')
 def index():
-    print(session['logined'])
-    if not session['logined']:
+    if 'logined' not in session:
         return redirect(url_for('index.login'))
+    print(session['logined'])
     return render_template('index.html')
 
 @bp.route('/login')
