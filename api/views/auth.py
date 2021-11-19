@@ -3,6 +3,7 @@ from flask import Blueprint, request, render_template, Response, json, session, 
 from db.initialize_db import db_session
 from util import jwt_encode
 from websocket.model import User
+from hashlib import sha512
 
 callname = __name__.rsplit(".", 1)[-1]
 
@@ -16,7 +17,7 @@ bp = Blueprint(
 def login():
     try:
         email = request.form['email']
-        pwd = request.form['password']
+        pwd = sha512(request.form['password'].encode('utf-8')).hexdigest()
         data = User.query.filter_by(email=email, password=pwd).first()
 
         token = jwt_encode(json.loads(str(data)))
@@ -37,7 +38,7 @@ def register():
     try:
         name = request.form['name']
         email = request.form['email']
-        password = request.form['password']
+        password = sha512(request.form['password'].encode('utf-8')).hexdigest()
 
         new_user = User(name=name, email=email, password=password)
 

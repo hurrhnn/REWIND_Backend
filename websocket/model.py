@@ -128,7 +128,8 @@ class Chat(Base):
 
     author = Column(
         Integer,
-        nullable=False
+        nullable=False,
+        unique=True
     )
 
     timestamp = Column(
@@ -143,6 +144,15 @@ class Chat(Base):
 
     def __repr__(self):
         return f"<Chat idx={self.idx}, roon={self.room}>"
+
+class Dm_list(Base):
+    __tablename__ = "dm_list"
+
+    name = Column(
+        Integer,
+        nullable=False,
+        unique=True
+    )
 
 
 class Ban(Base):

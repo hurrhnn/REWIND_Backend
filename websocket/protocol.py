@@ -6,7 +6,7 @@ from autobahn.twisted.websocket import WebSocketServerProtocol
 from util import jwt_decode
 from websocket.util import get_data, error, chat
 
-from websocket.model import User
+from websocket.model import User, Chat, Dm_list
 
 clients = {}
 
@@ -56,6 +56,10 @@ class WINDServerProtocol(WebSocketServerProtocol):
             )
 
         print(payload.decode())
+        check =  Dm_list.query.filter_by(name=data.get('user_id')^self.sess_data['user']['id']).first()
+        if check is None:
+            dm = Dm_list(name=data.get('user_id')^self.sess_data['user']['id'])
+
         return self.sendMessage(handler(self, data_payload))
 
     def onClose(self, wasClean, code, reason):
