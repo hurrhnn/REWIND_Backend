@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, Table, MetaData, Column, Text, DateTime, f
 from sqlalchemy.orm import sessionmaker, mapper
 
 from db.config import SQLALCHEMY_DATABASE_URI
-from db.models import DmList, User, get_chat_model
+from db.models import DmList, User, ModelCreator
 from util import jwt_decode, generate_snowflake
 from websocket.util import error, heartbeat, handshake, chat
 
@@ -119,7 +119,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
         session = self.session()
         dm_exist = session.query(DmList).filter_by(id=payload['chat_id']).first()
 
-        Chat = get_chat_model(payload['chat_id'])
+        Chat = ModelCreator.get_model("chat", "DM_" + payload['chat_id'])
 
         if dm_exist is None:
             session.add(DmList(id=payload['chat_id']))

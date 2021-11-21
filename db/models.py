@@ -124,38 +124,49 @@ class Ban(db.Model):
         db.String(2000),
         nullable=False,
         default="No reason."
-    )
+    ) 
 
 
-def get_chat_model(chat_id):
-    class KingGodGeneralEmperorChungmugongChat(db.Model):
-        __tablename__ = 'DM_' + chat_id
+class ModelCreator:
+    @classmethod
+    def get_model(cls, type_, table_name):
+        handler = getattr(cls, f"get_{type_.lower()}_model", None)
 
-        id = db.Column(
-            db.Text,
-            unique=True,
-            primary_key=True,
-            nullable=False
-        )
+        if handler is None:
+            raise TypeError("Unknown model type!")
 
-        room = db.Column(
-            db.Text,
-            nullable=False
-        )
+        return handler(table_name)
 
-        author = db.Column(
-            db.Text,
-            nullable=False,
-        )
-
-        timestamp = db.Column(
-            db.DateTime,
-            nullable=False,
-            default=func.now()
-        )
-
-        content = db.Column(
-            db.Text
-        )
-
-    return KingGodGeneralEmperorChungmugongChat
+    @classmethod
+    def get_chat_model(cls, table_name):
+        class KingGodGeneralEmperorChungmugongChat(db.Model):
+            __tablename__ = table_name
+    
+            id = db.Column(
+                db.Text,
+                unique=True,
+                primary_key=True,
+                nullable=False
+            )
+    
+            room = db.Column(
+                db.Text,
+                nullable=False
+            )
+    
+            author = db.Column(
+                db.Text,
+                nullable=False,
+            )
+    
+            timestamp = db.Column(
+                db.DateTime,
+                nullable=False,
+                default=func.now()
+            )
+    
+            content = db.Column(
+                db.Text
+            )
+    
+        return KingGodGeneralEmperorChungmugongChat
