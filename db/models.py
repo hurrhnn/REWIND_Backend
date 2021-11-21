@@ -6,8 +6,7 @@ from web import db
 
 
 class Counter(db.Model):
-    __bind_key__ = "main"
-    __table_args__ = {'extend_existing': True}
+    __tablename__ = "snowflake_counter"
 
     count = db.Column(
         db.Integer,
@@ -17,9 +16,7 @@ class Counter(db.Model):
 
 
 class User(db.Model):
-    __bind_key__ = "main"
     __tablename__ = "users"
-    __table_args__ = {'extend_existing': True}
 
     id = db.Column(
         db.Text,
@@ -56,8 +53,7 @@ class User(db.Model):
 
 
 class Room(db.Model):
-    __bind_key__ = "main"
-    __table_args__ = {'extend_existing': True}
+    __tablename__ = "room"
 
     id = db.Column(
         db.Text,
@@ -85,9 +81,7 @@ class Room(db.Model):
 
 
 class DmList(db.Model):
-    __bind_key__ = "main"
-    __table_args__ = {'extend_existing': True}
-
+    __tablename__ = "dm_list"
     id = db.Column(
         db.Text,
         primary_key=True,
@@ -97,9 +91,7 @@ class DmList(db.Model):
 
 
 class RoomList(db.Model):
-    __bind_key__ = "main"
-    __table_args__ = {'extend_existing': True}
-
+    __tablename__ = "room_list"
     id = db.Column(
         db.Text,
         primary_key=True,
@@ -109,8 +101,7 @@ class RoomList(db.Model):
 
 
 class Ban(db.Model):
-    __bind_key__ = "main"
-    __table_args__ = {'extend_existing': True}
+    __tablename__ = "ban"
 
     id = db.Column(
         db.Text,
@@ -136,33 +127,35 @@ class Ban(db.Model):
     )
 
 
-class Chat(db.Model):
-    __bind_key__ = "chat"
-    __tablename__ = "chat"
+def get_chat_model(chat_id):
+    class KingGodGeneralEmperorChungmugongChat(db.Model):
+        __tablename__ = 'DM_' + chat_id
 
-    id = db.Column(
-        db.Text,
-        unique=True,
-        primary_key=True,
-        nullable=False
-    )
+        id = db.Column(
+            db.Text,
+            unique=True,
+            primary_key=True,
+            nullable=False
+        )
 
-    room = db.Column(
-        db.Text,
-        nullable=False
-    )
+        room = db.Column(
+            db.Text,
+            nullable=False
+        )
 
-    author = db.Column(
-        db.Text,
-        nullable=False,
-    )
+        author = db.Column(
+            db.Text,
+            nullable=False,
+        )
 
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=func.now()
-    )
+        timestamp = db.Column(
+            db.DateTime,
+            nullable=False,
+            default=func.now()
+        )
 
-    content = db.Column(
-        db.Text
-    )
+        content = db.Column(
+            db.Text
+        )
+
+    return KingGodGeneralEmperorChungmugongChat
