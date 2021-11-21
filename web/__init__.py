@@ -1,7 +1,11 @@
 from flask import Flask
-from db.initialize_db import db
+from flask import Blueprint
+from flask_sqlalchemy import SQLAlchemy
 
+from db.config import SQLALCHEMY_BINDS
 from util import secret
+
+db = SQLAlchemy()
 
 
 def create_app():
