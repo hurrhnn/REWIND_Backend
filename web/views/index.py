@@ -1,17 +1,14 @@
-from flask import Blueprint, redirect, render_template, session, url_for, request, Response, flash
 
-from flask_sqlalchemy import SQLAlchemy
-from websocket.model import *
+from flask import Blueprint
+from flask import session
+from flask import redirect
+from flask import url_for
+from flask import render_template
 
-from db.initialize_db import db_session
-
-from util import jwt_encode
-
-callname = __name__.rsplit(".", 1)[-1]
 
 bp = Blueprint(
-    name=callname,
-    import_name=__name__,
+    name="index",
+    import_name="index",
     url_prefix="/"
 )
 
