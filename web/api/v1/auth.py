@@ -48,7 +48,7 @@ def login():
 
         if data is not None:
             return jsonify({
-                "type": "authentication",
+                "type": "auth",
                 "payload": {
                     "token": token
                 }

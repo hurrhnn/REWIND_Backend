@@ -8,9 +8,9 @@ def get_data(_type, payload):
     }).encode("utf-8")
 
 
-def handshake(sess_data, friends):
-    return get_data("handshake", {
-        "user_info": sess_data['user'],
+def authenticate(sess_data, friends):
+    return get_data("auth", {
+        "self_user": sess_data['user'],
         "friends": friends
     })
 

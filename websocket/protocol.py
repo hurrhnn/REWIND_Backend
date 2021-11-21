@@ -8,14 +8,14 @@ from sqlalchemy.orm import sessionmaker
 from db.config import SQLALCHEMY_BINDS
 from db.models import ModelCreator
 from util import jwt_decode, generate_snowflake
-from websocket.util import error, heartbeat, handshake, chat
-
-clients = {}
+from websocket.util import error, heartbeat, authenticate, chat
 
 
+# WebSocket Close Codes: https://github.com/Luka967/websocket-close-codes
 class WINDServerProtocol(WebSocketServerProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.authenticated = False
         self.sess_data = None
         self.last_heartbeat = time.time()
         self.engines = {name: create_engine(uri) for name, uri in SQLALCHEMY_BINDS.items()}
@@ -32,37 +32,39 @@ class WINDServerProtocol(WebSocketServerProtocol):
     def onMessage(self, payload, is_binary):
         if is_binary:
             return self.sendMessage(
-                error(10000, "Binary data not supported."),
+                error(1003, "Binary data not supported."),
                 False
             )
 
         try:
             data = json.loads(payload)
-        except ValueError:
+            _type = data.get("type")
+            data_payload = data.get("payload")
+
+        except (ValueError, AttributeError):
             return self.sendMessage(
-                error(10000, "Data should be JSON."),
+                error(1007, "Data should be JSON."),
                 False
             )
 
-        _type = data.get("type")
-        data_payload = data.get("payload")
         if not (_type or data_payload):
             return self.sendMessage(
-                error(10000, "Invalid request."),
+                error(4000, "Invalid request."),
                 False
             )
 
         handler = self.func_map.get(f"{_type}")
         if handler is None:
-            print(_type)
             return self.sendMessage(
-                error(10000, "Unknown type."),
+                error(4000, "Unknown type."),
                 False
             )
-        print(payload.decode())
+
+        print(json.dumps(data, indent=4))
         return self.sendMessage(handler(self, data_payload))
 
     def onClose(self, _, code, reason):
+        self.factory.unregister(self)
         print("WebSocket connection closed: {0}".format(reason))
 
     def onConnectionLost(self, reason):
@@ -74,14 +76,14 @@ class WINDServerProtocol(WebSocketServerProtocol):
         self.last_heartbeat = time.time()
         return heartbeat(payload)
 
-    def onHandshake(self, payload):
+    def onAuthenticate(self, payload):
         token = payload.get("auth")
         if not token:
-            return error(10002, "Token not provided.")
+            return error(4000, "Token not provided.")
 
         jwt_body = jwt_decode(token)
         if not jwt_body:
-            return error(10002, "Token signature mismatch.")
+            return error(4000, "Token signature mismatch.")
 
         print(jwt_body)
         self.sess_data = dict()
@@ -104,20 +106,27 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
             user_dict.update({"profile": None})
             friends.append(user_dict)
-        #   가입되어있는 유저 친구
 
-        clients.update({jwt_body['id']: self})
-        return handshake(self.sess_data, friends)
+        self.authenticated = True
+        return authenticate(self.sess_data, friends)
 
     def onChat(self, payload):
+        if self.authenticated is False:
+            return error(4001, "Authentication required.")
+
         _type = payload['type']
         user_id = self.sess_data['user']['id']
 
         if _type not in ["send", "edit"]:
-            return error(10003, "Unknown chat type.")
+            return error(4000, "Unknown chat type.")
 
         session = self.sessions['main']()
+        dm_check = session.query(ModelCreator.get_model("user")).filter_by(
+            id=str(int(payload['chat_id']) ^ int(user_id))).first()
         dm_exist = session.query(ModelCreator.get_model("dm_list")).filter_by(id=payload['chat_id']).first()
+
+        if dm_check is None:
+            return error(4000, "Unknown chat type.")
 
         Chat = ModelCreator.get_model("chat", "DM_" + payload['chat_id'])
 
@@ -128,9 +137,10 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
         if _type == "send":
             if not payload['content']:
-                return error(10004, "content is not provided.")
+                return error(4000, "content is not provided.")
 
-            client = clients.get(str(int(payload['chat_id']) ^ int(user_id)))
+            clients = list(filter(lambda x: x.sess_data['user']['id'] == str(int(payload['chat_id']) ^ int(user_id)),
+                                  self.factory.clients))
 
             _id = generate_snowflake(self.sessions['main']())
             session = self.sessions['chat']()
@@ -141,10 +151,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
                              content=payload['content']))
             session.commit()
 
-            try:
+            for client in clients:
                 client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], payload['content']))
-            except AttributeError:
-                pass
 
         else:
             _id = generate_snowflake(self.sessions['main']())
@@ -164,11 +172,15 @@ class WINDServerProtocol(WebSocketServerProtocol):
         return chat(_type, _id, user_id, payload['chat_id'], payload['content'])
 
     def onLoad(self, payload):
-        print(self)
+        # TODO: Retrieve chat from database.
+        if self.authenticated is False:
+            return error(4001, "Authentication required.")
+
+        return self
 
     func_map = {
         "heartbeat": onHeartbeat,
-        "handshake": onHandshake,
+        "auth": onAuthenticate,
         "chat": onChat,
         "load": onLoad
     }
