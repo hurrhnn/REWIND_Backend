@@ -23,16 +23,19 @@ def index():
     print(session['logined'])
     return render_template('index.html')
 
+
 @bp.route('/login')
 def login():
     return render_template('login.html')
+
 
 @bp.route('/register')
 def register():
     return render_template('register.html')
 
+
 @bp.route('/logout')
 def logout():
-    flash("Logout!!")
+    # flash("Logout!!")
     session['logined'] = False
     return redirect(url_for('index.index'))
