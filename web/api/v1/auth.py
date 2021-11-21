@@ -5,7 +5,7 @@ from flask import Blueprint
 from flask import jsonify
 from flask import request
 
-from db.models import User
+from db.models import ModelCreator
 from util import jwt_encode, generate_snowflake
 from web import db
 from web.api.error import UnauthorizedException
@@ -33,7 +33,7 @@ def login():
 
         password = sha512(password.encode('utf-8')).hexdigest()
 
-        data = User.query.filter_by(
+        data = ModelCreator.get_model("user").query.filter_by(
             email=email,
             password=password
         ).first()
@@ -89,7 +89,7 @@ def register():
 
         password = sha512(password.encode('utf-8')).hexdigest()
 
-        user_check = User.query.filter_by(
+        user_check = ModelCreator.get_model("user").query.filter_by(
             email=email
         ).first()
 
@@ -101,7 +101,7 @@ def register():
                 }
             }), 400
 
-        user = User(
+        user = ModelCreator.get_model("user")(
             id=generate_snowflake(),
             name=name,
             email=email,

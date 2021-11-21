@@ -2,7 +2,7 @@ from flask import Flask
 from flask import Blueprint
 from flask_sqlalchemy import SQLAlchemy
 
-from db.config import SQLALCHEMY_DATABASE_URI
+from db.config import SQLALCHEMY_BINDS
 from util import secret
 
 db = SQLAlchemy()
@@ -11,19 +11,19 @@ db = SQLAlchemy()
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = secret()
-    app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_BINDS'] = SQLALCHEMY_BINDS
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     __import__("db.models")
     db.init_app(app=app)
 
     with app.app_context():
-        db.create_all()
+        db.create_all(["main"])
 
-        from db.models import Counter
-        counter = Counter.query.first()
+        from db.models import ModelCreator
+        counter = ModelCreator.get_model("counter").query.first()
         if counter is None:
-            counter = Counter()
+            counter = ModelCreator.get_model("counter")()
             counter.count = 0
 
             db.session.add(counter)

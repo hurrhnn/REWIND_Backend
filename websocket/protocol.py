@@ -2,11 +2,11 @@ import json
 import time
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
-from sqlalchemy import create_engine, Table, MetaData, Column, Text, DateTime, func
-from sqlalchemy.orm import sessionmaker, mapper
+from sqlalchemy import create_engine, MetaData, func
+from sqlalchemy.orm import sessionmaker
 
-from db.config import SQLALCHEMY_DATABASE_URI
-from db.models import DmList, User, ModelCreator
+from db.config import SQLALCHEMY_BINDS
+from db.models import ModelCreator
 from util import jwt_decode, generate_snowflake
 from websocket.util import error, heartbeat, handshake, chat
 
@@ -18,9 +18,9 @@ class WINDServerProtocol(WebSocketServerProtocol):
         super().__init__(*args, **kwargs)
         self.sess_data = None
         self.last_heartbeat = time.time()
-        self.engine = create_engine(SQLALCHEMY_DATABASE_URI)
-        self.session = sessionmaker(self.engine)
-        self.metadata = MetaData(self.engine)
+        self.engines = {name: create_engine(uri) for name, uri in SQLALCHEMY_BINDS.items()}
+        self.sessions = {name: sessionmaker(engine) for name, engine in self.engines.items()}
+        self.metadatas = {name: MetaData(engine) for name, engine in self.engines.items()}
 
     def onConnect(self, request):
         print("Client connecting: {0}".format(request.peer))
@@ -92,8 +92,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
         }
 
         friends = []
-        session = self.session()
-        for user in session.query(User).all():
+        session = self.sessions['main']()
+        for user in session.query(ModelCreator.get_model("user")).all():
             if self.sess_data['user']['id'] == user.id:
                 continue
 
@@ -116,15 +116,15 @@ class WINDServerProtocol(WebSocketServerProtocol):
         if _type not in ["send", "edit"]:
             return error(10003, "Unknown chat type.")
 
-        session = self.session()
-        dm_exist = session.query(DmList).filter_by(id=payload['chat_id']).first()
+        session = self.sessions['main']()
+        dm_exist = session.query(ModelCreator.get_model("dm_list")).filter_by(id=payload['chat_id']).first()
 
         Chat = ModelCreator.get_model("chat", "DM_" + payload['chat_id'])
 
         if dm_exist is None:
-            session.add(DmList(id=payload['chat_id']))
+            session.add(ModelCreator.get_model("dm_list")(id=payload['chat_id']))
             session.commit()
-            Chat.__table__.create(bind=self.engine)
+            Chat.__table__.create(bind=self.engines['chat'])
 
         if _type == "send":
             if not payload['content']:
@@ -132,8 +132,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
             client = clients.get(str(int(payload['chat_id']) ^ int(user_id)))
 
-            session = self.session()
-            _id = generate_snowflake(session)
+            _id = generate_snowflake(self.sessions['main']())
+            session = self.sessions['chat']()
 
             session.add(Chat(id=_id,
                              room=payload['chat_id'],
@@ -147,8 +147,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 pass
 
         else:
-            session = self.session()
-            _id = generate_snowflake(session)
+            _id = generate_snowflake(self.sessions['main']())
+            session = self.sessions['chat']()
 
             if not payload['content']:
                 session.query(Chat).filter_by(id=payload['id']).delete(
