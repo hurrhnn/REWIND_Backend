@@ -5,11 +5,15 @@ import base64
 
 
 def generate_snowflake(session=None):
-    from db.models import Counter
+    from web import db
+    from db.models import ModelCreator
+
+    Counter = ModelCreator.get_model("counter")
     if session is None:
         # this is flask!
         counter = Counter.query.first()
         counter.count += 1
+        db.session.commit()
     else:
         # this is websocket!
         counter = session.query(Counter).first()
