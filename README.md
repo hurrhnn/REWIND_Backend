@@ -50,7 +50,7 @@ error: 뭐긴 뭐야 에러지 시발
 "payload": {
 	"type": "send, edit 중 하나",
     "id": "chat object id, edit할 때 id로 select함",
-	"user_id": "유저아이디, 서버에서 보낼때만 들어감, DM방은 X",
+	"user_id": "유저아이디, 클라는 이거 주지 마라",
 	"chat_id": "채팅방 아이디(Guild -> 그냥 snowflake id, DM -> user들의 id를 XOR한 값)",
 	"content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제, edit에서 내용 있으면 수정"
 }
@@ -66,6 +66,6 @@ error: 뭐긴 뭐야 에러지 시발
 DB -> /login(POST)
 
 friends를 불러올 때 DB 사용: 구현 완료
-채팅을 DB에 저장 및 수정: 구현 완료
-채팅을 DB에서 로드 및: 구현 중
+채팅을 DB에 저장 및 수정, 삭제: 구현 완료
+채팅을 DB에서 로드: 구현 중
 ```
