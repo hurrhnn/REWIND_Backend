@@ -2,7 +2,7 @@
     {% extends "default.html" %}
     {% block content %}
     <h2>Register</h2>
-    <form action="/register" method="POST">
+    <form action="/api/v1/auth/register" method="POST">
         <input type="name" name="name" placeholder="Name"><br>
         <input type="email" name="email" placeholder="Email"><br>
         <input type="password" name="password" placeholder="Password"><br>
