@@ -1,6 +1,24 @@
+import time
 import hmac
 import json
 import base64
+
+
+def generate_snowflake(session=None):
+    from db.models import Counter
+    if session is None:
+        # this is flask!
+        counter = Counter.query.first()
+        counter.count += 1
+    else:
+        # this is websocket!
+        counter = session.query(Counter).first()
+        counter.count += 1
+        session.commit()
+
+    custom_timestamp = bin(int(time.time() * 100000))[2:]
+    custom_count = ((16 - len(bin(counter.count)[2:])) * "0") + bin(counter.count)[2:]
+    return str(int(custom_count + custom_timestamp, 2))
 
 
 def b64_fix(data):
