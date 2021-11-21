@@ -1,4 +1,4 @@
-# WIND-NG
+# WIND
 ### DJango -> FLASK  & Autobahn 프로젝트<br>
 
 #### 구현이 완료된 것들:
@@ -7,61 +7,65 @@
 <HTTP 엔드포인트>
 
 /register - 뭐긴 뭐야 회원가입 하는 곳이지(POST)
-/login - 로그인 하는 API (POST인데 나중에 GET으로 바꿀꺼, OK: 201와 Token, FAIL: 401)
-        
+/login - 로그인 하는 API (POST)
+
+
 <웹소켓>
-
-타입:
-handshake: 핸드쉐이크시 데이터 교환에 사용
-error: 뭐긴 뭐야 에러지 시발
-{
-	"code": "코드",
-	"reason": "이유"
-}
-
-heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려줌
-ㄴ heartbeat timeout이면 Websocket Closed 시키는 거 좀 만들자 
-
-chat: 채팅
-{
-	"type": "send, edit 중 하나",
-	"user_id": "유저아이디, 서버에서 보낼때만 들어감",
-	"chat_id": "채팅방 아이디",
-	"content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제"
-}
-
-user: 사용자
-{
-	"id": "아이디",
-	"name": "이름",
-	"profile": "(대충 프로필 주소 넣어주기)"
-}
 
 기본 데이터 틀:
 {
 	"type": "",
 	"payload": ""
 }
-        
-유저 정보:
--===악수===-
-Client:
-type handshake
-payload {
-	"auth": "대충 토큰을 쳐 박으새오"
-}
-        
-Server:
-type handshake
-payload {
-	"user_info": "user오브젝트를 쳐 박으새오!",
+
+타입:
+heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려줌
+ㄴ heartbeat timeout이면 Websocket Closed 시키는 거 좀 만들자
+
+handshake: 핸드쉐이크시 데이터 교환에 사용
+user: 유저 정보
+chat: 뭐긴 뭐야 채팅이지
+error: 뭐긴 뭐야 에러지 시발
+
+"type": "handshake",
+"payload": {
+	"auth": "대충 토큰 보내주기"
+} (Client)
+
+
+"type": "handshake",
+"payload": {
+	"user_info": "내 정보 보내주기",
 	"friends": ["DB에서 친구 목록 가져옴"]
+} (Server)
+
+"type": "user",
+"payload": {
+	"id": "snowflake id",
+	"name": "이름",
+	"profile": "(대충 프로필 주소 넣어주기)"
+}
+
+"type": "chat",
+"payload": {
+	"type": "send, edit 중 하나",
+    "id": "chat object id, edit할 때 id로 select함",
+	"user_id": "유저아이디, 서버에서 보낼때만 들어감, DM방은 X",
+	"chat_id": "채팅방 아이디(Guild -> 그냥 snowflake id, DM -> user들의 id를 XOR한 값)",
+	"content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제, edit에서 내용 있으면 수정"
+}
+
+"type": "error",
+{
+	"code": "코드",
+	"reason": "이유"
 }
 
 <내부 DB>
 /register(POST) -> DB
 DB -> /login(POST)
-friends를 불러올 때 DB 사용
 
-채팅을 DB에 저장: 구현 중
+friends를 불러올 때 DB 사용: 구현 완료
+채팅을 DB에 저장 및 수정: 구현 완료
+채팅을 DB에서 로드 및: 구현 중
 ```
