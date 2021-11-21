@@ -1,17 +1,22 @@
+import web
+import warnings
+import sys
+
+from sqlalchemy import exc as sa_exc
+
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
+
 from autobahn.twisted.resource import WebSocketResource, WSGIRootResource
 
-import web
 from websocket.protocol import WINDServerProtocol
 from websocket.factory import WINDServerFactory
 
-import sys
-
 if __name__ == '__main__':
     log.startLogging(sys.stdout)
+    warnings.simplefilter("ignore", category=sa_exc.SAWarning)
 
     ws_factory = WINDServerFactory("ws://0.0.0.0:9000")
     ws_factory.protocol = WINDServerProtocol
