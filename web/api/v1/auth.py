@@ -112,7 +112,7 @@ def register():
 
         for key, value in mail_verify.items():
             if value['email'] == email or value['name'] == name:
-                del mail_verify[email_key]
+                del mail_verify[key]
                 break
 
         mail_verify[email_key] = {'name': name, 'email': email,
