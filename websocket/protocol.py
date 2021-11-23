@@ -1,14 +1,18 @@
+import base64
 import json
 import time
+from datetime import datetime, timedelta
+
+from pytz import timezone
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
-from sqlalchemy import create_engine, MetaData, func
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 
 from db.config import SQLALCHEMY_BINDS
 from db.models import ModelCreator
 from util import jwt_decode, generate_snowflake
-from websocket.util import error, heartbeat, authenticate, chat
+from websocket.util import error, heartbeat, authenticate, chat, load
 
 
 # WebSocket Close Codes: https://github.com/Luka967/websocket-close-codes
@@ -20,7 +24,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
         self.last_heartbeat = time.time()
         self.engines = {name: create_engine(uri) for name, uri in SQLALCHEMY_BINDS.items()}
         self.sessions = {name: sessionmaker(engine) for name, engine in self.engines.items()}
-        self.metadatas = {name: MetaData(engine) for name, engine in self.engines.items()}
+        self.metadata = {name: MetaData(engine) for name, engine in self.engines.items()}
 
     def onConnect(self, request):
         print("Client connecting: {0}".format(request.peer))
@@ -60,8 +64,10 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 False
             )
 
-        print(json.dumps(data, indent=4))
-        return self.sendMessage(handler(self, data_payload))
+        data = handler(self, data_payload)
+        if data is not None:
+            print(json.dumps(json.loads(data), indent=4))
+            return self.sendMessage(data)
 
     def onClose(self, _, code, reason):
         self.factory.unregister(self)
@@ -93,7 +99,6 @@ class WINDServerProtocol(WebSocketServerProtocol):
             "profile": None
         }
 
-        friends = []
         session = self.sessions['main']()
         friends = [{
             "id": user.id,
@@ -126,15 +131,16 @@ class WINDServerProtocol(WebSocketServerProtocol):
         dm_exist = session.query(ModelCreator.get_model("dm_list")).filter_by(id=payload['chat_id']).first()
 
         if dm_check is None:
-            return error(4000, "Unknown chat type.")
+            return error(4004, "User not exist.")
 
-        Chat = ModelCreator.get_model("chat", "DM_" + payload['chat_id'])
+        chat_model = ModelCreator.get_model("chat", "DM_" + payload['chat_id'])
 
         if dm_exist is None:
             session.add(ModelCreator.get_model("dm_list")(id=payload['chat_id']))
             session.commit()
-            Chat.__table__.create(bind=self.engines['chat'])
+            chat_model.__table__.create(bind=self.engines['chat'])
 
+        created_at = datetime.now(timezone('Asia/Seoul'))
         if _type == "send":
             if not payload['content']:
                 return error(4000, "content is not provided.")
@@ -145,38 +151,71 @@ class WINDServerProtocol(WebSocketServerProtocol):
             _id = generate_snowflake(self.sessions['main']())
             session = self.sessions['chat']()
 
-            session.add(Chat(id=_id,
-                             room=payload['chat_id'],
-                             author=user_id,
-                             content=payload['content']))
+            session.add(chat_model(id=_id,
+                                   room=payload['chat_id'],
+                                   author=user_id,
+                                   created_at=created_at,
+                                   content=payload['content']))
             session.commit()
 
             for client in clients:
-                client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], payload['content']))
+                client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], created_at, payload['content']))
 
         else:
             _id = generate_snowflake(self.sessions['main']())
             session = self.sessions['chat']()
 
             if not payload['content']:
-                session.query(Chat).filter_by(id=payload['id']).delete(
+                session.query(chat_model).filter_by(id=payload['id']).delete(
                     synchronize_session='fetch')
                 session.commit()
 
             else:
-                session.query(Chat).filter_by(id=payload['id']).update(
+                session.query(chat_model).filter_by(id=payload['id']).update(
                     {'content': payload['content'],
-                     'id': _id,
-                     'timestamp': func.now()})
+                     'id': _id})
                 session.commit()
-        return chat(_type, _id, user_id, payload['chat_id'], payload['content'])
+        return chat(_type, _id, user_id, payload['chat_id'], created_at, payload['content'])
 
     def onLoad(self, payload):
-        # TODO: Retrieve chat from database.
         if self.authenticated is False:
             return error(4001, "Authentication required.")
 
-        return self
+        _type = payload['type']
+
+        if _type not in ["chat", "mutual_users"]:
+            return error(4000, "Unknown chat type.")
+
+        main_session = self.sessions['main']()
+        if _type == "chat":
+            chat_session = self.sessions['chat']()
+            load_id = payload['load_id']
+            created_at = payload['datetime']
+            count = payload['count']
+            if main_session.query(ModelCreator.get_model("user")).filter_by(
+                    id=str(int(load_id) ^ int(self.sess_data['user']['id']))).first():
+                if main_session.query(ModelCreator.get_model("dm_list")).filter_by(id=load_id).first():
+                    chat_model = ModelCreator.get_model("chat", "DM_" + load_id)
+                    queried_data = chat_session.query(chat_model).filter(
+                        chat_model.created_at < datetime.strptime(base64.b64decode(created_at).decode('utf-8'),
+                                                                  "%Y-%m-%d %H:%M:%S.%f") - timedelta(hours=-9)).limit(
+                        count).all()
+                    if queried_data:
+                        [self.sendMessage(load(x)) for x in list(
+                            map(lambda x: json.loads(chat("type", x.id, x.author, x.room, x.created_at, x.content)),
+                                queried_data))]
+                    return None
+            else:
+                return error(4004, "provided DM is not opened.")
+        else:
+            friends = [{
+                "id": user.id,
+                "name": user.name,
+                "profile": None
+            } for user in
+                main_session.query(ModelCreator.get_model("user")).all() if
+                self.sess_data['user']['id'] != user.id]
+            return load(friends)
 
     func_map = {
         "heartbeat": onHeartbeat,
