@@ -1,26 +1,30 @@
-import traceback
+import asyncio
+import threading
+from datetime import timedelta
 from hashlib import sha512
-from random import choice
 
-from flask import Blueprint
+from flask import Blueprint, copy_current_request_context
 from flask import jsonify
 from flask import request
 from flask import session
-from flask_mailing import Mail, Message
+from flask_mailing import Message
 
 from db.models import ModelCreator
 from util import jwt_encode, generate_snowflake
 from web import db
-from web.api.error import UnauthorizedException
 from web import mail
-
-import re
 
 bp = Blueprint(
     name="auth",
     import_name="auth",
     url_prefix="/auth"
 )
+
+
+@bp.before_request
+def make_session_permanent():
+    session.permanent = True
+    bp.permanent_session_lifetime = timedelta(minutes=30)
 
 
 @bp.post('/login')
@@ -37,31 +41,26 @@ def login():
                 }
             }), 400
 
-        password = sha512(password.encode('utf-8')).hexdigest()
-
-        data = ModelCreator.get_model("user").query.filter_by(
+        login_user = ModelCreator.get_model("user").query.filter_by(
             email=email,
-            password=password
+            password=sha512(password.encode('utf-8')).hexdigest()
         ).first()
 
-        if data is None:
-            raise UnauthorizedException
+        if login_user is None:
+            raise ValueError
 
         token = jwt_encode({
-            "id": data.id,
-            "name": data.name
+            "id": login_user.id,
+            "name": login_user.name
         })
 
-        if data is not None:
-            return jsonify({
-                "type": "auth",
-                "payload": {
-                    "token": token
-                }
-            }), 201
-        else:
-            raise UnauthorizedException
-    except UnauthorizedException:
+        return jsonify({
+            "type": "auth",
+            "payload": {
+                "token": token
+            }
+        }), 201
+    except (Exception,):
         return jsonify({
             "type": "error",
             "payload": {
@@ -71,7 +70,7 @@ def login():
 
 
 @bp.post('/register')
-async def register():
+def register():
     try:
         name = request.form.get("name", None)
         email = request.form.get("email", None)
@@ -93,13 +92,11 @@ async def register():
                 }
             }), 400
 
-        password = sha512(password.encode('utf-8')).hexdigest()
-
-        user_check = ModelCreator.get_model("user").query.filter_by(
+        email_check = ModelCreator.get_model("user").query.filter_by(
             email=email
         ).first()
 
-        if user_check is not None:
+        if email_check is not None:
             return jsonify({
                 "type": "error",
                 "payload": {
@@ -108,34 +105,43 @@ async def register():
             }), 400
 
         email_key = generate_snowflake()
-        if re.search("@[\w.]+", email).group() != "@sunrint.hs.kr":
-            return jsonify({
-                "type": "error",
-                "payload": {
-                    "message": "Invalid email address."
-                }
-            }), 400
 
-        session['user_info'] = {'name':name, 'email':email, 'password':password, 'email_key':email_key}
+        # if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
+        #     return jsonify({
+        #         "type": "error",
+        #         "payload": {
+        #             "message": "Invalid email address."
+        #         }
+        #     }), 400
 
-        message = Message(
-            subject="WIND MAIL TEST",
-            recipients=[email],
-            body=f'/api/v1/auth/email_verify/{email_key}',
-            )
+        session['account_info'] = {'name': name, 'email': email,
+                                   'password': sha512(password.encode('utf-8')).hexdigest(), 'email_key': email_key}
 
-        await mail.send_message(message)
+        @copy_current_request_context
+        def send_email():
+            async def _():
+                await mail.send_message(Message(
+                    subject="WIND email verification",
+                    recipients=[email],
+                    body=f'{request.host_url}api/v1/auth/email_verify/{email_key}',
+                ))
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(_())
+            loop.close()
+
+        thread = threading.Thread(target=send_email)
+        thread.start()
 
         return jsonify({
             "type": "info",
             "payload": {
-                "message": "account successfully created."
+                "message": "successfully created an account creation request."
             }
         }), 201
 
-    except Exception as e:
-        print(e)
-        traceback.print_exc(e)
+    except (Exception,):
         return jsonify({
             "type": "error",
             "payload": {
@@ -143,21 +149,24 @@ async def register():
             }
         }), 500
 
+
 @bp.get('/email_verify/<key>')
-def email_verify(key):
+def verify_email(key):
     try:
-        user_info = session['user_info']
-        if user_info['email_key'] == key:
+        account_info = session['account_info']
+        if account_info['email_key'] == key:
 
             user = ModelCreator.get_model("user")(
-                    id=generate_snowflake(),
-                    name=user_info['name'],
-                    email=user_info['email'],
-                    password=user_info['password']
-                )
+                id=generate_snowflake(),
+                name=account_info['name'],
+                email=account_info['email'],
+                password=account_info['password']
+            )
 
             db.session.add(user)
             db.session.commit()
+
+            session.clear()
             return jsonify({
                 "type": "info",
                 "payload": {
@@ -166,16 +175,12 @@ def email_verify(key):
             }), 201
 
         else:
-            return jsonify({
-                "type": "error",
-                "payload": {
-                    "message": "unexpected error was occurred."
-                }
-            }), 500
-    except:
+            raise ValueError
+
+    except (Exception,):
         return jsonify({
             "type": "error",
             "payload": {
-                "message": "unexpected error was occurred."
+                "message": "The session has expired or does not exist."
             }
-        }), 500
+        }), 404
