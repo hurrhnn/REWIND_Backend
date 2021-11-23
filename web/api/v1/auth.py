@@ -1,30 +1,26 @@
 import asyncio
 import threading
-from datetime import timedelta
+import re
 from hashlib import sha512
 
-from flask import Blueprint, copy_current_request_context
+from flask import Blueprint
+from flask import copy_current_request_context
 from flask import jsonify
 from flask import request
-from flask import session
 from flask_mailing import Message
+
+from web import db
+from web import mail
+from web import mail_verify
 
 from db.models import ModelCreator
 from util import jwt_encode, generate_snowflake
-from web import db
-from web import mail
 
 bp = Blueprint(
     name="auth",
     import_name="auth",
     url_prefix="/auth"
 )
-
-
-@bp.before_request
-def make_session_permanent():
-    session.permanent = True
-    bp.permanent_session_lifetime = timedelta(minutes=30)
 
 
 @bp.post('/login')
@@ -106,16 +102,21 @@ def register():
 
         email_key = generate_snowflake()
 
-        # if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
-        #     return jsonify({
-        #         "type": "error",
-        #         "payload": {
-        #             "message": "Invalid email address."
-        #         }
-        #     }), 400
+        if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
+            return jsonify({
+                "type": "error",
+                "payload": {
+                    "message": "Invalid email address."
+                }
+            }), 400
 
-        session['account_info'] = {'name': name, 'email': email,
-                                   'password': sha512(password.encode('utf-8')).hexdigest(), 'email_key': email_key}
+        for key, value in mail_verify.items():
+            if value['email'] == email or value['name'] == name:
+                del mail_verify[email_key]
+                break
+
+        mail_verify[email_key] = {'name': name, 'email': email,
+                                  'password': sha512(password.encode('utf-8')).hexdigest()}
 
         @copy_current_request_context
         def send_email():
@@ -141,7 +142,8 @@ def register():
             }
         }), 201
 
-    except (Exception,):
+    except (Exception,) as e:
+        print(e)
         return jsonify({
             "type": "error",
             "payload": {
@@ -153,29 +155,25 @@ def register():
 @bp.get('/email_verify/<key>')
 def verify_email(key):
     try:
-        account_info = session['account_info']
-        if account_info['email_key'] == key:
+        account_info = mail_verify[key]
 
-            user = ModelCreator.get_model("user")(
-                id=generate_snowflake(),
-                name=account_info['name'],
-                email=account_info['email'],
-                password=account_info['password']
-            )
+        user = ModelCreator.get_model("user")(
+            id=generate_snowflake(),
+            name=account_info['name'],
+            email=account_info['email'],
+            password=account_info['password']
+        )
 
-            db.session.add(user)
-            db.session.commit()
+        db.session.add(user)
+        db.session.commit()
 
-            session.clear()
-            return jsonify({
-                "type": "info",
-                "payload": {
-                    "message": "account successfully created."
-                }
-            }), 201
-
-        else:
-            raise ValueError
+        mail_verify.pop(key)
+        return jsonify({
+            "type": "info",
+            "payload": {
+                "message": "account successfully created."
+            }
+        }), 201
 
     except (Exception,):
         return jsonify({
