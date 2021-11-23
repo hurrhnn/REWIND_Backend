@@ -81,6 +81,17 @@ class ModelCreator:
                 nullable=True
             )
 
+            mutual_users = db.Column(
+                db.Text,
+                nullable=True
+            )
+
+            profile = db.Column(
+                db.Text,
+                nullable=True,
+                default=None
+            )
+
         return User
 
     @classmethod
