@@ -26,20 +26,16 @@ def error(code, reason):
     })
 
 
-def chat(_type, _id, user_id, chat_id, content):
+def chat(_type, _id, user_id, chat_id, created_at, content):
     return get_data("chat", {
         "type": _type,
         "id": _id,
         "user_id": user_id,
         "chat_id": chat_id,
+        "created_at": created_at,
         "content": content
     })
 
 
-def load(_id, user_id, load_id, count):
-    return get_data("load", {
-        "id": _id,
-        "user_id": user_id,
-        "load_id": load_id,
-        "count": count
-    })
+def load(queried_data):
+    return json.dumps(queried_data).encode('utf-8')

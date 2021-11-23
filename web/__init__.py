@@ -1,15 +1,16 @@
 import os
 
-from flask import Flask
 from flask import Blueprint
+from flask import Flask
+from flask_mailing import Mail
 from flask_sqlalchemy import SQLAlchemy
-from flask_mailing import Mail, Message
 
 from db.config import SQLALCHEMY_BINDS
 from util import secret
 
 db = SQLAlchemy()
 mail = Mail()
+
 
 def create_app():
     app = Flask(__name__)
@@ -22,10 +23,9 @@ def create_app():
     app.config['MAIL_SERVER'] = "smtp.gmail.com"
     app.config['MAIL_TLS'] = False
     app.config['MAIL_SSL'] = False
-    mail.init_app(app)
 
-    __import__("db.models")
     db.init_app(app=app)
+    mail.init_app(app)
 
     with app.app_context():
         db.create_all(["main"])
