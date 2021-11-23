@@ -1,7 +1,6 @@
 import re
+from pytz import timezone
 from datetime import datetime
-
-from sqlalchemy import func
 
 from web import db
 
@@ -32,7 +31,7 @@ class ModelCreator:
     def get_counter_model(cls, table_name=None):
         class Counter(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "snowflake_counter" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "snowflake_counter"
 
             count = db.Column(
                 db.Integer,
@@ -46,7 +45,7 @@ class ModelCreator:
     def get_user_model(cls, table_name=None):
         class User(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "user" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "user"
 
             id = db.Column(
                 db.Text,
@@ -60,9 +59,9 @@ class ModelCreator:
                 nullable=False
             )
 
-            timestamp = db.Column(
+            created_at = db.Column(
                 db.DateTime,
-                default=datetime.now(),
+                default=datetime.now(timezone('Asia/Seoul')),
                 nullable=False
             )
 
@@ -98,7 +97,7 @@ class ModelCreator:
     def get_room_model(cls, table_name=None):
         class Room(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "room" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "room"
 
             id = db.Column(
                 db.Text,
@@ -113,10 +112,10 @@ class ModelCreator:
                 default="New Server"
             )
 
-            create = db.Column(
+            created_at = db.Column(
                 db.DateTime,
                 nullable=False,
-                default=func.now()
+                default=datetime.now(timezone('Asia/Seoul'))
             )
 
             owner = db.Column(
@@ -130,7 +129,7 @@ class ModelCreator:
     def get_dm_list_model(cls, table_name=None):
         class DmList(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "dm_list" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "dm_list"
             id = db.Column(
                 db.Text,
                 primary_key=True,
@@ -144,7 +143,7 @@ class ModelCreator:
     def get_room_list_model(cls, table_name=None):
         class RoomList(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "room_list" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "room_list"
             id = db.Column(
                 db.Text,
                 primary_key=True,
@@ -158,7 +157,7 @@ class ModelCreator:
     def get_ban_model(cls, table_name=None):
         class Ban(db.Model):
             __bind_key__ = "main"
-            __tablename__ = "ban" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "ban"
 
             id = db.Column(
                 db.Text,
@@ -189,7 +188,7 @@ class ModelCreator:
     def get_chat_model(cls, table_name=None):
         class Chat(db.Model):
             __bind_key__ = "chat"
-            __tablename__ = "chat" if table_name is None else table_name
+            __tablename__ = table_name if table_name else "chat"
 
             id = db.Column(
                 db.Text,
@@ -208,10 +207,10 @@ class ModelCreator:
                 nullable=False,
             )
 
-            timestamp = db.Column(
+            created_at = db.Column(
                 db.DateTime,
                 nullable=False,
-                default=func.now()
+                default=datetime.now(timezone('Asia/Seoul'))
             )
 
             content = db.Column(
