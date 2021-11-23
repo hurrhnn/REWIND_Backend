@@ -10,6 +10,7 @@ from util import secret
 
 db = SQLAlchemy()
 mail = Mail()
+mail_verify = {}
 
 
 def create_app():
@@ -20,7 +21,7 @@ def create_app():
     app.config['MAIL_USERNAME'] = os.environ['MAIL_ADDRESS']
     app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWD']
     app.config['MAIL_PORT'] = 465
-    app.config['MAIL_SERVER'] = "smtp.gmail.com"
+    app.config['MAIL_SERVER'] = "smtp.icmp.kr"
     app.config['MAIL_TLS'] = False
     app.config['MAIL_SSL'] = False
 
