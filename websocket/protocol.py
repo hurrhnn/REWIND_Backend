@@ -95,17 +95,17 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
         friends = []
         session = self.sessions['main']()
-        for user in session.query(ModelCreator.get_model("user")).all():
-            if self.sess_data['user']['id'] == user.id:
-                continue
+        friends = [{
+            "id": user.id,
+            "name": user.name,
+            "profile": None
+        } for user in
+            session.query(ModelCreator.get_model("user")).all() if
+            self.sess_data['user']['id'] != user.id]
 
-            user_dict = {
-                "id": user.id,
-                "name": user.name
-            }
-
-            user_dict.update({"profile": None})
-            friends.append(user_dict)
+        session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).update(
+            {'mutual_users': json.dumps(friends)})
+        session.commit()
 
         self.authenticated = True
         return authenticate(self.sess_data, friends)
