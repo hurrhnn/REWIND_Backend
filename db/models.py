@@ -77,11 +77,19 @@ class ModelCreator:
 
             server = db.Column(
                 db.Text,
+                default="[]",
                 nullable=True
             )
 
             mutual_users = db.Column(
                 db.Text,
+                default="[]",
+                nullable=True
+            )
+
+            req_pending_queue = db.Column(
+                db.Text,
+                default="[]",
                 nullable=True
             )
 
