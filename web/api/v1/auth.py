@@ -102,13 +102,13 @@ def register():
 
         email_key = generate_snowflake()
 
-        if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
-            return jsonify({
-                "type": "error",
-                "payload": {
-                    "message": "Invalid email address."
-                }
-            }), 400
+        # if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
+        #     return jsonify({
+        #         "type": "error",
+        #         "payload": {
+        #             "message": "Invalid email address."
+        #         }
+        #     }), 400
 
         for key, value in mail_verify.items():
             if value['email'] == email or value['name'] == name:
@@ -155,7 +155,7 @@ def register():
 @bp.get('/email_verify/<key>')
 def verify_email(key):
     try:
-        account_info = mail_verify[key]
+        account_info = mail_verify.pop(key)
 
         user = ModelCreator.get_model("user")(
             id=generate_snowflake(),
@@ -167,7 +167,6 @@ def verify_email(key):
         db.session.add(user)
         db.session.commit()
 
-        mail_verify.pop(key)
         return jsonify({
             "type": "info",
             "payload": {
