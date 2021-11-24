@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from pytz import timezone
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, desc, MetaData
 from sqlalchemy.orm import sessionmaker
 
 from db.config import SQLALCHEMY_BINDS
 from db.models import ModelCreator
 from util import jwt_decode, generate_snowflake
-from websocket.util import error, heartbeat, authenticate, chat, load
+from websocket.util import error, heartbeat, authenticate, chat, load, mutual_users
 
 
 # WebSocket Close Codes: https://github.com/Luka967/websocket-close-codes
@@ -100,20 +100,10 @@ class WINDServerProtocol(WebSocketServerProtocol):
         }
 
         session = self.sessions['main']()
-        friends = [{
-            "id": user.id,
-            "name": user.name,
-            "profile": None
-        } for user in
-            session.query(ModelCreator.get_model("user")).all() if
-            self.sess_data['user']['id'] != user.id]
-
-        session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).update(
-            {'mutual_users': json.dumps(friends)})
-        session.commit()
 
         self.authenticated = True
-        return authenticate(self.sess_data, friends)
+        return authenticate(self.sess_data, session.query(ModelCreator.get_model('user')).filter_by(
+            id=self.sess_data['user']['id']).first().mutual_users)
 
     def onChat(self, payload):
         if self.authenticated is False:
@@ -141,6 +131,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
             chat_model.__table__.create(bind=self.engines['chat'])
 
         created_at = datetime.now(timezone('Asia/Seoul'))
+
+        query_result = True
         if _type == "send":
             if not payload['content']:
                 return error(4000, "content is not provided.")
@@ -159,23 +151,26 @@ class WINDServerProtocol(WebSocketServerProtocol):
             session.commit()
 
             for client in clients:
-                client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], created_at, payload['content']))
+                client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], str(created_at), payload['content']))
 
         else:
             _id = generate_snowflake(self.sessions['main']())
             session = self.sessions['chat']()
 
             if not payload['content']:
-                session.query(chat_model).filter_by(id=payload['id']).delete(
-                    synchronize_session='fetch')
+                query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
+                                                                        author=self.sess_data['user']).delete(
+                    synchronize_session='fetch'))
                 session.commit()
 
             else:
-                session.query(chat_model).filter_by(id=payload['id']).update(
+                query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
+                                                                        author=self.sess_data['user']['id']).update(
                     {'content': payload['content'],
-                     'id': _id})
+                     'id': _id}))
                 session.commit()
-        return chat(_type, _id, user_id, payload['chat_id'], created_at, payload['content'])
+        return chat(_type, _id, user_id, payload['chat_id'], str(created_at),
+                    payload['content']) if query_result else None
 
     def onLoad(self, payload):
         if self.authenticated is False:
@@ -183,8 +178,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
         _type = payload['type']
 
-        if _type not in ["chat", "mutual_users"]:
-            return error(4000, "Unknown chat type.")
+        if _type not in ["chat"]:
+            return error(4000, "Unknown load type.")
 
         main_session = self.sessions['main']()
         if _type == "chat":
@@ -198,28 +193,79 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     chat_model = ModelCreator.get_model("chat", "DM_" + load_id)
                     queried_data = chat_session.query(chat_model).filter(
                         chat_model.created_at < datetime.strptime(base64.b64decode(created_at).decode('utf-8'),
-                                                                  "%Y-%m-%d %H:%M:%S.%f") - timedelta(hours=-9)).limit(
+                                                                  "%Y-%m-%d %H:%M:%S.%f") - timedelta(
+                            hours=-9)).order_by(desc(chat_model.created_at)).limit(
                         count).all()
                     if queried_data:
                         [self.sendMessage(load(x)) for x in list(
-                            map(lambda x: json.loads(chat("type", x.id, x.author, x.room, x.created_at, x.content)),
-                                queried_data))]
+                            map(lambda x: json.loads(
+                                chat("type", x.id, x.author, x.room, str(x.created_at), x.content)),
+                                queried_data))[::-1]]
                     return None
             else:
                 return error(4004, "provided DM is not opened.")
-        else:
-            friends = [{
-                "id": user.id,
-                "name": user.name,
-                "profile": None
-            } for user in
-                main_session.query(ModelCreator.get_model("user")).all() if
-                self.sess_data['user']['id'] != user.id]
-            return load(friends)
+
+    def onMutualUsers(self, payload):
+        if self.authenticated is False:
+            return error(4001, "Authentication required.")
+
+        _type = payload['type']
+        if _type not in ["request", "response", "retrieve", "remove"]:
+            return error(4004, "Unknown mutual_users type.")
+
+        main_session = self.sessions['main']()
+        if _type == 'retrieve':
+            if payload.get('name') is None:
+                _mutual_users = [{
+                    "id": user.id,
+                    "name": user.name,
+                    "profile": None
+                } for user in
+                    main_session.query(ModelCreator.get_model("user")).all() if
+                    self.sess_data['user']['id'] != user.id]
+                return load(_mutual_users)
+            else:
+                return None
+
+        elif _type == 'request':
+            check = main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first()
+
+            if [payload['name'] for i in json.loads(check.mutual_users) if i['name'] == payload['name']]:
+                return error(4000, "mutual_user is already exist.")
+            else:
+                req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                    name=payload['name']).first().req_pending_queue)
+
+                check = main_session.query(ModelCreator.get_model('user')).filter_by(name=payload['name']).update(
+                        {
+                            'req_pending_queue': json.dumps(req_pending_queue if
+                                                            req_pending_queue and self.sess_data['user']['id']
+                                                            in req_pending_queue else [self.sess_data['user']['id']]
+                                                            if not req_pending_queue else
+                                                            req_pending_queue.append(self.sess_data['user']['id']))
+                        })
+                main_session.commit()
+
+                if check:
+                    return mutual_users(_type, payload['name'])
+
+                else:
+                    return error(4004, "could not send to request mutual_user.")
+
+        elif _type == 'response':
+            return None
+
+        elif _type == 'delete':
+            return None
+
+        elif _type == 'remove':
+            return None
 
     func_map = {
         "heartbeat": onHeartbeat,
         "auth": onAuthenticate,
         "chat": onChat,
-        "load": onLoad
+        "load": onLoad,
+        "mutual_users": onMutualUsers
     }

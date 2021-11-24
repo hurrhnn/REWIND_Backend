@@ -8,10 +8,10 @@ def get_data(_type, payload):
     }).encode("utf-8")
 
 
-def authenticate(sess_data, friends):
+def authenticate(sess_data, _mutual_users):
     return get_data("auth", {
         "self_user": sess_data['user'],
-        "friends": friends
+        "mutual_users": _mutual_users
     })
 
 
@@ -39,3 +39,10 @@ def chat(_type, _id, user_id, chat_id, created_at, content):
 
 def load(queried_data):
     return json.dumps(queried_data).encode('utf-8')
+
+
+def mutual_users(_type, name=None):
+    return get_data("mutual_users", {
+        "type": _type,
+        "name": name
+    })
