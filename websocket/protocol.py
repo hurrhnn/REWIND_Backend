@@ -91,15 +91,19 @@ class WINDServerProtocol(WebSocketServerProtocol):
         if not jwt_body:
             return error(4000, "Token signature mismatch.")
 
+        session = self.sessions['main']()
+        self_user = session.query(ModelCreator.get_model('user')).filter_by(id=jwt_body['id']).first()
+
+        if not self_user:
+            return error(4000, "Invalid token payload provided.")
+
         print(jwt_body)
         self.sess_data = dict()
         self.sess_data['user'] = {
-            "id": jwt_body['id'],
-            "name": jwt_body['name'],
-            "profile": None
+            "id": self_user.id,
+            "name": self_user.name,
+            "profile": self_user.profile
         }
-
-        session = self.sessions['main']()
 
         self.authenticated = True
         return authenticate(self.sess_data, session.query(ModelCreator.get_model('user')).filter_by(
@@ -238,13 +242,13 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     name=payload['name']).first().req_pending_queue)
 
                 check = main_session.query(ModelCreator.get_model('user')).filter_by(name=payload['name']).update(
-                        {
-                            'req_pending_queue': json.dumps(req_pending_queue if
-                                                            req_pending_queue and self.sess_data['user']['id']
-                                                            in req_pending_queue else [self.sess_data['user']['id']]
-                                                            if not req_pending_queue else
-                                                            req_pending_queue.append(self.sess_data['user']['id']))
-                        })
+                    {
+                        'req_pending_queue': json.dumps(req_pending_queue if
+                                                        req_pending_queue and self.sess_data['user']['id']
+                                                        in req_pending_queue else [self.sess_data['user']['id']]
+                        if not req_pending_queue else
+                        req_pending_queue.append(self.sess_data['user']['id']))
+                    })
                 main_session.commit()
 
                 if check:
