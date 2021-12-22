@@ -263,8 +263,57 @@ class WINDServerProtocol(WebSocketServerProtocol):
         elif _type == 'delete':
             return None
 
-        elif _type == 'remove':
-            return None
+        elif _type == 'remove':  # friend request remove
+            req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().req_pending_queue)
+
+            _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
+            if req_pending_queue.count(_id):
+                del req_pending_queue[req_pending_queue.index(_id)]
+            else:
+                return error(4004, "targeted name was not requested.")
+
+            check = main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).update(
+                {'req_pending_queue': json.dumps(req_pending_queue)})
+            main_session.commit()
+
+            if check:
+                for client in list(filter(lambda x: x.sess_data['user']['name'] == name, self.factory.clients)):
+                    client.sendMessage(mutual_users(_type, self.sess_data['user']))
+            else:
+                return error(4004, "could not remove to friend request.")
+            return ok()
+
+        elif _type == 'delete':  # friend remove
+            self_mutual_users = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().mutual_users)
+            opponent_mutual_users = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                name=name).first().mutual_users)
+
+            for self_list in self_mutual_users:
+                if self_list['name'] == name:
+                    del self_mutual_users[self_mutual_users.index(self_list)]
+                    break
+
+            for opponent_list in opponent_mutual_users:
+                if opponent_list['name'] == self.sess_data['user']['name']:
+                    del opponent_mutual_users[opponent_mutual_users.index(opponent_list)]
+                    break
+
+            check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
+                {'mutual_users': json.dumps(self_mutual_users)})
+
+            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).\
+                update({'mutual_users': json.dumps(opponent_mutual_users)})
+
+            main_session.commit()
+
+            if check:
+                for client in list(filter(lambda x: x.sess_data['user']['name'] == name, self.factory.clients)):
+                    client.sendMessage(mutual_users(_type, self.sess_data['user']))
+            else:
+                return error(4004, "select named user was not friend.")
+            return ok()
 
     func_map = {
         "heartbeat": onHeartbeat,
