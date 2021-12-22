@@ -1,11 +1,28 @@
-# WIND
-### DJango -> FLASK & Autobahn 프로젝트<br>
+# REWIND_Backend
+### DJango(WIND) -> FLASK & Autobahn 프로젝트<br>
 
+Environment: Python 3.10 <br>
 API: https://rewind.icmp.kr <br>
 WebSocket: wss://rewind.icmp.kr/ws <br>
 
-#### 구현이 완료된 것들:
+### 의존성 설치
+```bash
+python3.10 -m pip install -r requirements.txt
+```
 
+### 사전 설정
+SMTP 메일 설정을 알맞게 변경 해 주세요.
+```python
+app.config['MAIL_USERNAME'] = os.environ['MAIL_ADDRESS']
+app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWD']
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_SERVER'] = "smtp.icmp.kr"
+app.config['MAIL_TLS'] = True
+app.config['MAIL_SSL'] = True
+```
+<br>
+
+#### 구현이 완료된 것들:
 ```json
 <HTTP 엔드포인트>
 
