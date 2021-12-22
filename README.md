@@ -1,8 +1,8 @@
 # WIND
 ### DJango -> FLASK & Autobahn 프로젝트<br>
 
-API: https://rewind.icmp.kr<br>
-WebSocket: wss://rewind.icmp.kr/ws<br>
+API: https://rewind.icmp.kr <br>
+WebSocket: wss://rewind.icmp.kr/ws <br>
 
 #### 구현이 완료된 것들:
 
@@ -21,8 +21,6 @@ WebSocket: wss://rewind.icmp.kr/ws<br>
     }
 }
 
-/api/v1/auth/email_verify/<key> - 이메일 인증 하는 곳 (GET)
-
 /api/v1/auth/login - 로그인 하는 곳 (POST: email, password)
 {
     "type": "auth",
@@ -30,6 +28,9 @@ WebSocket: wss://rewind.icmp.kr/ws<br>
         "token": "코런건 없어용~"
     }
 }
+        
+/api/v1/auth/email_verify/<key> - 이메일 인증 하는 곳 (GET)
+        
 
 
 <웹소켓>
@@ -41,13 +42,15 @@ WebSocket: wss://rewind.icmp.kr/ws<br>
 }
 
 타입:
-heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려 줌 (WS연결이 끊어질 때 까지 반복적으로 확인함, 40 + 5초 내에 하트비트 값 받기 실패시 WS 연결 드랍.)
-auth: 인증 (heartbeat를 먼저 받지 않았다면 WS 연결 드랍.)
-user: 유저 object
-chat: 채팅 object
-load: 채팅 기록, 친구 목록 로드 등에 사용됨
-mutual_users: 친구 요청 보내기 / 수락 / 삭제, 친구 삭제 기능 
-error: 뭐긴 뭐야 에러지 시발
+  ok: 뭐 줄꺼 없을때 주는 거, 정상적으로 처리됬다는 거임 ㅇㅇ  
+  error: 뭐긴 뭐야 에러지 시발
+        
+  heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려 줌 (WS연결이 끊어질 때 까지 반복적으로 확인함, 40 + 5초 내에 하트비트 값 받기 실패시 WS 연결 드랍.)
+  auth: 인증 (heartbeat를 먼저 받지 않았다면 WS 연결 드랍.)
+  user: 유저 object
+  chat: 채팅 object
+  load: 채팅 기록, 친구 목록 로드 등에 사용됨
+  mutual_users(friends): 친구 요청 보내기 / 수락 / 삭제, 친구 삭제 기능
 
 "type": "heartbeat",
 "payload": {
@@ -56,28 +59,28 @@ error: 뭐긴 뭐야 에러지 시발
 
 "type": "auth",
 "payload": {
-	 "auth": "대충 토큰 보내주기"
+  "auth": "대충 토큰 보내주기"
 } (Request)
 
 "type": "auth",
 "payload": {
-	 "self_user": "내 정보 보내주기",
-	 "mutual_requests": [user objects list] (친추 요청한 user object)
-   "mutual_users": [user objects list] (친추된 user object)
+  "self_user": "내 정보 보내주기",
+  "mutual_requests": [user objects list] (친추 요청한 user object)
+  "mutual_users": [user objects list] (친추된 user object)
 } (Response)
 
 "type": "user",
 "payload": {
-	 "id": "snowflake id",
-	 "name": "이름",
-	 "profile": "(대충 프로필 주소 넣어주기)" or None
+  "id": "snowflake id",
+  "name": "이름",
+  "profile": "(대충 프로필 주소 넣어주기)" or None
 }
 
 "type": "chat",
 "payload": {
-	 "type": "send, edit 중 하나",
-	 "chat_id": "채팅방 아이디(Guild -> 그냥 snowflake id, DM -> user들의 id를 XOR한 값)",
-	 "content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제, edit에서 내용 있으면 수정"
+  "type": "send, edit 중 하나",
+  "chat_id": "채팅방 아이디(Guild -> 그냥 snowflake id, DM -> user들의 id를 XOR한 값)",
+  "content": "대충 내용, send에서 비어있을 시 무시, edit에서 비어있을 시 삭제, edit에서 내용 있으면 수정"
 } (Request)
 
 "type": "chat",
@@ -92,7 +95,7 @@ error: 뭐긴 뭐야 에러지 시발
 
 "type": "load",
 "payload": {
-  "type" : "chat",
+  "type": "chat",
   "load_id": "XOR 방이름",
   "datetime": "%Y-%m-%d %H:%M:%S.%f(chat의 created_at 포맷)",
   "count": 갯수(int)
@@ -100,23 +103,33 @@ error: 뭐긴 뭐야 에러지 시발
 
 (Response): type이 chat이면 요청한 datetime 기준 전의 채팅 object를 count 수 만큼 반복 전송 함.
 
+"type": "load",
+"payload": {
+  "type": "mutual_users"
+} (Request)
+        
+(Response): 아래 mutual_users의 response 타입이 클라로 외서 친구 추가가 확인된 경우, 
+            mutual_users를 갱신하고 싶을 때 사용. (user object array 줌)
+        
 "type": "mutual_users",
 "payload": {
   "type": "request(친구 추가 요청), response(친구 추가 수락), remove(친구 추가 요청 삭제), delete(친구 삭제(누가 삭제하든 서로 삭제됨))",
-  "id": "상대방 snowflake user id"
+  "name": "보낼 user의 name"
 } (Request)
 
 "type": "mutual_users",
 "payload": {
   "type": "위에 거랑 같음",
   "user": "보낸 user의 object"
-} (리퀘스트의 대상 클라이언트 Response)
+} (리퀘스트의 대상 클라이언트가 받는 Response)
 
 "type": "error",
 "payload": {
-	"code": "코드",
-	"reason": "이유"
+  "code": "코드", 
+  "reason": "이유"
 } (Response)
+
+
 
 <내부 DB>
 main:
@@ -131,6 +144,5 @@ friends를 불러올 때 DB 사용: 구현 완료
 채팅을 DB에 저장 및 수정, 삭제: 구현 완료
 채팅을 DB에서 로드: 구현 완료
 DB에서 유저 테이블 로드하여 친구 요청, 추가, 제거: 구현 완료
+길드: 시간 되면..?
 ```
-
-
