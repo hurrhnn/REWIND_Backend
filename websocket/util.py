@@ -8,15 +8,8 @@ def get_data(_type, payload):
     }).encode("utf-8")
 
 
-def authenticate(sess_data, _mutual_users):
-    return get_data("auth", {
-        "self_user": sess_data['user'],
-        "mutual_users": _mutual_users
-    })
-
-
-def heartbeat(payload):
-    return get_data("heartbeat", payload)
+def ok():
+    return get_data("ok", None)
 
 
 def error(code, reason):
@@ -24,6 +17,18 @@ def error(code, reason):
         "code": code,
         "reason": reason
     })
+
+
+def authenticate(sess_data, mutual_requests, _mutual_users):
+    return get_data("auth", {
+        "self_user": sess_data['user'],
+        "mutual_requests": mutual_requests,
+        "mutual_users": _mutual_users
+    })
+
+
+def heartbeat(payload):
+    return get_data("heartbeat", payload)
 
 
 def chat(_type, _id, user_id, chat_id, created_at, content):
@@ -41,8 +46,8 @@ def load(queried_data):
     return json.dumps(queried_data).encode('utf-8')
 
 
-def mutual_users(_type, name=None):
+def mutual_users(_type, user):
     return get_data("mutual_users", {
         "type": _type,
-        "name": name
+        "user": user
     })
