@@ -580,3 +580,5 @@ cython_debug/
 
 >>>>>>> master
 .WINDToken
+.python-version
+db/*.db
