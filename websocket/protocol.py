@@ -1,6 +1,7 @@
 import base64
 import json
 import time
+import threading
 from datetime import datetime, timedelta
 
 from pytz import timezone
@@ -12,16 +13,17 @@ from sqlalchemy.orm import sessionmaker
 from db.config import SQLALCHEMY_BINDS
 from db.models import ModelCreator
 from util import jwt_decode, generate_snowflake
-from websocket.util import error, heartbeat, authenticate, chat, load, mutual_users
+from websocket.util import ok, error, heartbeat, authenticate, chat, load, mutual_users
 
 
 # WebSocket Close Codes: https://github.com/Luka967/websocket-close-codes
 class WINDServerProtocol(WebSocketServerProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.check_heartbeat_func = None
+        self.last_heartbeat = time.time()
         self.authenticated = False
         self.sess_data = None
-        self.last_heartbeat = time.time()
         self.engines = {name: create_engine(uri) for name, uri in SQLALCHEMY_BINDS.items()}
         self.sessions = {name: sessionmaker(engine) for name, engine in self.engines.items()}
         self.metadata = {name: MetaData(engine) for name, engine in self.engines.items()}
@@ -78,11 +80,46 @@ class WINDServerProtocol(WebSocketServerProtocol):
         self.factory.unregister(self)
 
     def onHeartbeat(self, payload):
-        # TODO: Check heartbeat
-        self.last_heartbeat = time.time()
+        if self.check_heartbeat_func is None:
+            def check_heartbeat():
+                prev_cnt = 0
+                while True:
+                    prev_time = int(time.time())
+                    heartbeat_interval = 40
+                    time.sleep(heartbeat_interval - prev_cnt)
+                    is_timeout = False
+
+                    if prev_time - self.last_heartbeat > heartbeat_interval - prev_cnt:
+                        cnt = 0
+                        jitter_chance = True
+                        while True:
+                            time.sleep(1)
+                            if prev_time - self.last_heartbeat > heartbeat_interval - prev_cnt:
+                                cnt += 1
+                                if cnt >= 5:
+                                    jitter_chance = False
+                                    break
+                            else:
+                                prev_cnt = cnt
+                                break
+
+                        is_timeout = not jitter_chance
+                    else:
+                        prev_cnt = 0
+
+                    if is_timeout:
+                        self.sendClose(4003, "Heartbeat missing. Websocket session closed.")
+                        break
+
+            self.check_heartbeat_func = threading.Thread(target=check_heartbeat)
+            self.check_heartbeat_func.start()
+        self.last_heartbeat = int(time.time())
         return heartbeat(payload)
 
     def onAuthenticate(self, payload):
+        if self.check_heartbeat_func is None:
+            return error(4003, "First heartbeat payload was not received.")
+
         token = payload.get("auth")
         if not token:
             return error(4000, "Token not provided.")
@@ -97,7 +134,6 @@ class WINDServerProtocol(WebSocketServerProtocol):
         if not self_user:
             return error(4000, "Invalid token payload provided.")
 
-        print(jwt_body)
         self.sess_data = dict()
         self.sess_data['user'] = {
             "id": self_user.id,
@@ -106,8 +142,20 @@ class WINDServerProtocol(WebSocketServerProtocol):
         }
 
         self.authenticated = True
-        return authenticate(self.sess_data, session.query(ModelCreator.get_model('user')).filter_by(
-            id=self.sess_data['user']['id']).first().mutual_users)
+        return authenticate(self.sess_data,
+                            json.dumps([{
+                                "id": session.query(ModelCreator.get_model('user')).filter_by(id=mutual_user_id
+                                                                                              ).first().id,
+                                "name": session.query(ModelCreator.get_model('user')).filter_by(id=mutual_user_id
+                                                                                                ).first().name,
+                                "profile": session.query(ModelCreator.get_model('user')).filter_by(id=mutual_user_id
+                                                                                                   ).first().profile,
+                                }
+                                for mutual_user_id in json.loads(session.query(
+                                    ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']
+                                                                              ).first().req_pending_queue)]),
+                            session.query(ModelCreator.get_model('user')).
+                            filter_by(id=self.sess_data['user']['id']).first().mutual_users)
 
     def onChat(self, payload):
         if self.authenticated is False:
@@ -141,9 +189,6 @@ class WINDServerProtocol(WebSocketServerProtocol):
             if not payload['content']:
                 return error(4000, "content is not provided.")
 
-            clients = list(filter(lambda x: x.sess_data['user']['id'] == str(int(payload['chat_id']) ^ int(user_id)),
-                                  self.factory.clients))
-
             _id = generate_snowflake(self.sessions['main']())
             session = self.sessions['chat']()
 
@@ -154,7 +199,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
                                    content=payload['content']))
             session.commit()
 
-            for client in clients:
+            for client in list(filter(lambda x: x.sess_data['user']['id'] == str(int(payload['chat_id']) ^ int(user_id)
+                                                                                 ), self.factory.clients)):
                 client.sendMessage(chat(_type, _id, user_id, payload['chat_id'], str(created_at), payload['content']))
 
         else:
@@ -164,14 +210,16 @@ class WINDServerProtocol(WebSocketServerProtocol):
             if not payload['content']:
                 query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
                                                                         author=self.sess_data['user']).delete(
-                    synchronize_session='fetch'))
+                                                                        synchronize_session='fetch'))
                 session.commit()
 
             else:
                 query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
                                                                         author=self.sess_data['user']['id']).update(
-                    {'content': payload['content'],
-                     'id': _id}))
+                                                                        {
+                                                                            'content': payload['content'],
+                                                                            'id': _id
+                                                                        }))
                 session.commit()
         return chat(_type, _id, user_id, payload['chat_id'], str(created_at),
                     payload['content']) if query_result else None
@@ -180,9 +228,8 @@ class WINDServerProtocol(WebSocketServerProtocol):
         if self.authenticated is False:
             return error(4001, "Authentication required.")
 
-        _type = payload['type']
-
-        if _type not in ["chat"]:
+        _type = payload.get('type')
+        if _type not in ["chat", "mutual_users"]:
             return error(4000, "Unknown load type.")
 
         main_session = self.sessions['main']()
@@ -209,59 +256,102 @@ class WINDServerProtocol(WebSocketServerProtocol):
             else:
                 return error(4004, "provided DM is not opened.")
 
+        elif _type == "mutual_users":
+            return json.dumps({
+                        "type": _type,
+                        "payload": [{
+                                    "id": mutual_user['id'],
+                                    "name": mutual_user['name'],
+                                    "profile": mutual_user['profile']
+                                    } for mutual_user in json.loads(main_session.query(
+                                        ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']
+                                                                                  ).first().mutual_users)]
+                                    }).encode("utf-8")
+
     def onMutualUsers(self, payload):
         if self.authenticated is False:
             return error(4001, "Authentication required.")
 
         _type = payload['type']
-        if _type not in ["request", "response", "retrieve", "remove"]:
+        if _type not in ["request", "response", "remove", "delete"]:
             return error(4004, "Unknown mutual_users type.")
 
         main_session = self.sessions['main']()
-        if _type == 'retrieve':
-            if payload.get('name') is None:
-                _mutual_users = [{
-                    "id": user.id,
-                    "name": user.name,
-                    "profile": None
-                } for user in
-                    main_session.query(ModelCreator.get_model("user")).all() if
-                    self.sess_data['user']['id'] != user.id]
-                return load(_mutual_users)
-            else:
-                return None
+        name = payload.get('name')
+        if name is None:
+            return error(4001, "name is not provided.")
 
-        elif _type == 'request':
+        if main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first() is None:
+            return error(4004, "select named user is not exist.")
+
+        if _type == 'request':  # request friends
             check = main_session.query(ModelCreator.get_model('user')).filter_by(
                 id=self.sess_data['user']['id']).first()
 
-            if [payload['name'] for i in json.loads(check.mutual_users) if i['name'] == payload['name']]:
-                return error(4000, "mutual_user is already exist.")
+            if [name for i in json.loads(check.mutual_users) if i['name'] == name]:
+                return error(4000, "select named user is already friend.")
             else:
-                req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
-                    name=payload['name']).first().req_pending_queue)
 
-                check = main_session.query(ModelCreator.get_model('user')).filter_by(name=payload['name']).update(
+                req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                    name=name).first().req_pending_queue)
+
+                check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
                     {
                         'req_pending_queue': json.dumps(req_pending_queue if
                                                         req_pending_queue and self.sess_data['user']['id']
                                                         in req_pending_queue else [self.sess_data['user']['id']]
-                        if not req_pending_queue else
-                        req_pending_queue.append(self.sess_data['user']['id']))
+                                                        if not req_pending_queue else req_pending_queue if
+                                                        req_pending_queue.append(self.sess_data['user']['id']) is None
+                                                        else req_pending_queue)
+
                     })
+
                 main_session.commit()
 
                 if check:
-                    return mutual_users(_type, payload['name'])
+                    for client in list(filter(lambda x: x.sess_data['user']['name'] == name, self.factory.clients)):
+                        client.sendMessage(mutual_users(_type, self.sess_data['user']))
+
+                    return ok()
 
                 else:
-                    return error(4004, "could not send to request mutual_user.")
+                    return error(4004, "could not send to friend request.")
 
         elif _type == 'response':
-            return None
+            req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().req_pending_queue)
+            self_mutual_users = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().mutual_users)
+            opponent_user = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first()
+            opponent_mutual_users = json.loads(opponent_user.mutual_users)
 
-        elif _type == 'delete':
-            return None
+            _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
+            if req_pending_queue.count(_id):
+                del req_pending_queue[req_pending_queue.index(_id)]
+                self_mutual_users.append(self.sess_data['user'])
+                opponent_mutual_users.append({
+                    'id': opponent_user.id,
+                    'name': opponent_user.name,
+                    'profile': opponent_user.profile
+                })
+            else:
+                return error(4004, "targeted name was not requested.")
+
+            check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
+                {'mutual_users': json.dumps(self_mutual_users)})
+
+            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id'])\
+                .update({'mutual_users': json.dumps(opponent_mutual_users),
+                        'req_pending_queue': json.dumps(req_pending_queue)})
+
+            main_session.commit()
+
+            if check:
+                for client in list(filter(lambda x: x.sess_data['user']['name'] == name, self.factory.clients)):
+                    client.sendMessage(mutual_users(_type, self.sess_data['user']))
+            else:
+                return error(4004, "could not send to friend response.")
+            return ok()
 
         elif _type == 'remove':  # friend request remove
             req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
