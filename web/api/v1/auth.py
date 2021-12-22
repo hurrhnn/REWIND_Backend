@@ -102,13 +102,13 @@ def register():
 
         email_key = generate_snowflake()
 
-        # if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
-        #     return jsonify({
-        #         "type": "error",
-        #         "payload": {
-        #             "message": "Invalid email address."
-        #         }
-        #     }), 400
+        if re.search(r"@[\w.]+", email).group() != "@sunrint.hs.kr":
+            return jsonify({
+                "type": "error",
+                "payload": {
+                    "message": "Invalid email address."
+                }
+            }), 400
 
         for key, value in mail_verify.items():
             if value['email'] == email or value['name'] == name:
