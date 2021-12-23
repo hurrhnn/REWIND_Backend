@@ -332,20 +332,20 @@ class WINDServerProtocol(WebSocketServerProtocol):
             _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
             if mutual_requests.count(_id):
                 del mutual_requests[mutual_requests.index(_id)]
-                self_mutual_users.append(self.sess_data['user'])
-                opponent_mutual_users.append({
+                self_mutual_users.append({
                     'id': opponent_user.id,
                     'name': opponent_user.name,
                     'profile': opponent_user.profile
                 })
+                opponent_mutual_users.append(self.sess_data['user'])
             else:
                 return error(4004, "targeted name was not requested.")
 
             check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
-                {'mutual_users': json.dumps(self_mutual_users)})
+                {'mutual_users': json.dumps(opponent_mutual_users)})
 
             check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']) \
-                .update({'mutual_users': json.dumps(opponent_mutual_users),
+                .update({'mutual_users': json.dumps(self_mutual_users),
                          'mutual_requests': json.dumps(mutual_requests)})
 
             main_session.commit()
