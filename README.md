@@ -11,7 +11,7 @@ python3.10 -m pip install -r requirements.txt
 ```
 
 ### 사전 설정
-SMTP 메일 설정을 알맞게 변경 해 주세요.
+메일 인증 전송을 위해 SMTP 메일 설정을 알맞게 변경 해 주세요.
 ```python
 app.config['MAIL_USERNAME'] = os.environ['MAIL_ADDRESS']
 app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWD']
@@ -37,6 +37,14 @@ app.config['MAIL_SSL'] = True
     	"message": "account successfully created."
     }
 }
+            
+/api/v1/auth/email_verify/<key> - 이메일 인증 하는 곳 (GET)
+{
+    "type": "info",
+    "payload": {
+    	"message": "account successfully created."
+    }
+}
 
 /api/v1/auth/login - 로그인 하는 곳 (POST: email, password)
 {
@@ -45,9 +53,7 @@ app.config['MAIL_SSL'] = True
         "token": "코런건 없어용~"
     }
 }
-        
-/api/v1/auth/email_verify/<key> - 이메일 인증 하는 곳 (GET)
-        
+
 
 
 <웹소켓>
