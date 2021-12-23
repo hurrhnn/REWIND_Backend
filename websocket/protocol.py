@@ -150,10 +150,10 @@ class WINDServerProtocol(WebSocketServerProtocol):
                                                                                                 ).first().name,
                                 "profile": session.query(ModelCreator.get_model('user')).filter_by(id=mutual_user_id
                                                                                                    ).first().profile,
-                                }
+                            }
                                 for mutual_user_id in json.loads(session.query(
                                     ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']
-                                                                              ).first().req_pending_queue)]),
+                                                                              ).first().mutual_requests)]),
                             session.query(ModelCreator.get_model('user')).
                             filter_by(id=self.sess_data['user']['id']).first().mutual_users)
 
@@ -210,16 +210,16 @@ class WINDServerProtocol(WebSocketServerProtocol):
             if not payload['content']:
                 query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
                                                                         author=self.sess_data['user']).delete(
-                                                                        synchronize_session='fetch'))
+                    synchronize_session='fetch'))
                 session.commit()
 
             else:
                 query_result = bool(session.query(chat_model).filter_by(id=payload['id'],
                                                                         author=self.sess_data['user']['id']).update(
-                                                                        {
-                                                                            'content': payload['content'],
-                                                                            'id': _id
-                                                                        }))
+                    {
+                        'content': payload['content'],
+                        'id': _id
+                    }))
                 session.commit()
         return chat(_type, _id, user_id, payload['chat_id'], str(created_at),
                     payload['content']) if query_result else None
@@ -258,15 +258,15 @@ class WINDServerProtocol(WebSocketServerProtocol):
 
         elif _type == "mutual_users":
             return json.dumps({
-                        "type": _type,
-                        "payload": [{
-                                    "id": mutual_user['id'],
-                                    "name": mutual_user['name'],
-                                    "profile": mutual_user['profile']
-                                    } for mutual_user in json.loads(main_session.query(
-                                        ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']
-                                                                                  ).first().mutual_users)]
-                                    }).encode("utf-8")
+                "type": _type,
+                "payload": [{
+                    "id": mutual_user['id'],
+                    "name": mutual_user['name'],
+                    "profile": mutual_user['profile']
+                } for mutual_user in json.loads(main_session.query(
+                    ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']
+                                                              ).first().mutual_users)]
+            }).encode("utf-8")
 
     def onMutualUsers(self, payload):
         if self.authenticated is False:
@@ -288,21 +288,25 @@ class WINDServerProtocol(WebSocketServerProtocol):
             check = main_session.query(ModelCreator.get_model('user')).filter_by(
                 id=self.sess_data['user']['id']).first()
 
+            _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
+            if [_id for i in json.loads(check.mutual_requests) if i == _id]:
+                return error(4000, "select named user is already requested.")
+
             if [name for i in json.loads(check.mutual_users) if i['name'] == name]:
                 return error(4000, "select named user is already friend.")
             else:
 
-                req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
-                    name=name).first().req_pending_queue)
+                mutual_requests = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                    name=name).first().mutual_requests)
 
                 check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
                     {
-                        'req_pending_queue': json.dumps(req_pending_queue if
-                                                        req_pending_queue and self.sess_data['user']['id']
-                                                        in req_pending_queue else [self.sess_data['user']['id']]
-                                                        if not req_pending_queue else req_pending_queue if
-                                                        req_pending_queue.append(self.sess_data['user']['id']) is None
-                                                        else req_pending_queue)
+                        'mutual_requests': json.dumps(mutual_requests if
+                                                        mutual_requests and self.sess_data['user']['id']
+                                                        in mutual_requests else [self.sess_data['user']['id']]
+                                                        if not mutual_requests else mutual_requests if
+                                                        mutual_requests.append(self.sess_data['user']['id']) is None
+                                                        else mutual_requests)
 
                     })
 
@@ -318,16 +322,16 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     return error(4004, "could not send to friend request.")
 
         elif _type == 'response':
-            req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
-                id=self.sess_data['user']['id']).first().req_pending_queue)
+            mutual_requests = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().mutual_requests)
             self_mutual_users = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
                 id=self.sess_data['user']['id']).first().mutual_users)
             opponent_user = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first()
             opponent_mutual_users = json.loads(opponent_user.mutual_users)
 
             _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
-            if req_pending_queue.count(_id):
-                del req_pending_queue[req_pending_queue.index(_id)]
+            if mutual_requests.count(_id):
+                del mutual_requests[mutual_requests.index(_id)]
                 self_mutual_users.append(self.sess_data['user'])
                 opponent_mutual_users.append({
                     'id': opponent_user.id,
@@ -340,9 +344,9 @@ class WINDServerProtocol(WebSocketServerProtocol):
             check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
                 {'mutual_users': json.dumps(self_mutual_users)})
 
-            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id'])\
+            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']) \
                 .update({'mutual_users': json.dumps(opponent_mutual_users),
-                        'req_pending_queue': json.dumps(req_pending_queue)})
+                         'mutual_requests': json.dumps(mutual_requests)})
 
             main_session.commit()
 
@@ -354,17 +358,18 @@ class WINDServerProtocol(WebSocketServerProtocol):
             return ok()
 
         elif _type == 'remove':  # friend request remove
-            req_pending_queue = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
-                id=self.sess_data['user']['id']).first().req_pending_queue)
+            mutual_requests = json.loads(main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).first().mutual_requests)
 
             _id = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).first().id
-            if req_pending_queue.count(_id):
-                del req_pending_queue[req_pending_queue.index(_id)]
+            if mutual_requests.count(_id):
+                del mutual_requests[mutual_requests.index(_id)]
             else:
                 return error(4004, "targeted name was not requested.")
 
-            check = main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).update(
-                {'req_pending_queue': json.dumps(req_pending_queue)})
+            check = main_session.query(ModelCreator.get_model('user')).filter_by(
+                id=self.sess_data['user']['id']).update(
+                {'mutual_requests': json.dumps(mutual_requests)})
             main_session.commit()
 
             if check:
@@ -393,7 +398,7 @@ class WINDServerProtocol(WebSocketServerProtocol):
             check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
                 {'mutual_users': json.dumps(self_mutual_users)})
 
-            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']).\
+            check += main_session.query(ModelCreator.get_model('user')).filter_by(id=self.sess_data['user']['id']). \
                 update({'mutual_users': json.dumps(opponent_mutual_users)})
 
             main_session.commit()
