@@ -87,7 +87,7 @@ class ModelCreator:
                 nullable=True
             )
 
-            req_pending_queue = db.Column(
+            mutual_requests = db.Column(
                 db.Text,
                 default="[]",
                 nullable=True
