@@ -302,11 +302,11 @@ class WINDServerProtocol(WebSocketServerProtocol):
                 check = main_session.query(ModelCreator.get_model('user')).filter_by(name=name).update(
                     {
                         'mutual_requests': json.dumps(mutual_requests if
-                                                        mutual_requests and self.sess_data['user']['id']
-                                                        in mutual_requests else [self.sess_data['user']['id']]
-                                                        if not mutual_requests else mutual_requests if
-                                                        mutual_requests.append(self.sess_data['user']['id']) is None
-                                                        else mutual_requests)
+                                                      mutual_requests and self.sess_data['user']['id'] in
+                                                      mutual_requests else [self.sess_data['user']['id']]
+                                                      if not mutual_requests else mutual_requests if
+                                                      mutual_requests.append(self.sess_data['user']['id']) is None
+                                                      else mutual_requests)
 
                     })
 
