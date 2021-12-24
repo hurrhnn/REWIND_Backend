@@ -120,7 +120,7 @@ app.config['MAIL_SSL'] = True
 "payload": {
   "type": "chat",
   "load_id": "XOR 방이름",
-  "datetime": "%Y-%m-%d %H:%M:%S.%f(chat의 created_at 포맷)",
+  "datetime": "Base64 Encoded %Y-%m-%d %H:%M:%S.%f(chat의 created_at 포맷)",
   "count": 갯수(int)
 } (Request)
 
