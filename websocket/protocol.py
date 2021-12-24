@@ -245,12 +245,12 @@ class WINDServerProtocol(WebSocketServerProtocol):
                     queried_data = chat_session.query(chat_model).filter(
                         chat_model.created_at < datetime.strptime(base64.b64decode(created_at).decode('utf-8'),
                                                                   "%Y-%m-%d %H:%M:%S.%f") - timedelta(
-                            hours=-9)).order_by(desc(chat_model.created_at)).limit(
+                            hours=0)).order_by(desc(chat_model.created_at)).limit(
                         count).all()
                     if queried_data:
                         [self.sendMessage(load(x)) for x in list(
                             map(lambda x: json.loads(
-                                chat("type", x.id, x.author, x.room, str(x.created_at), x.content)),
+                                chat("send", x.id, x.author, x.room, str(x.created_at), x.content)),
                                 queried_data))[::-1]]
                     return None
             else:
