@@ -4,6 +4,7 @@
 Environment: Python 3.10 <br>
 API: https://rewind.icmp.kr <br>
 WebSocket: wss://rewind.icmp.kr/ws <br>
+Application: https://github.com/lnJoy/REWIND_Frontend
 
 ### 의존성 설치
 ```bash
@@ -34,7 +35,7 @@ app.config['MAIL_SSL'] = True
 {
     "type": "info",
     "payload": {
-    	"message": "account successfully created."
+    	"message": "successfully created an account creation request."
     }
 }
             
