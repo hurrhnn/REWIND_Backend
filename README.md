@@ -24,7 +24,7 @@ app.config['MAIL_SSL'] = True
 <br>
 
 #### 구현이 완료된 것들:
-```json
+```
 <HTTP 엔드포인트>
 
 /register - 회원가입 폼 보낼 수 있는 곳 (테스트 용)
@@ -67,7 +67,7 @@ app.config['MAIL_SSL'] = True
 
 타입:
   ok: 뭐 줄꺼 없을때 주는 거, 정상적으로 처리됬다는 거임 ㅇㅇ  
-  error: 뭐긴 뭐야 에러지 시발
+  error: 뭐긴 뭐야 에러지
         
   heartbeat: 하트비트 ㅇㅇ 페이로드에 있는 값은 돌려 줌 (WS연결이 끊어질 때 까지 반복적으로 확인함, 40 + 5초 내에 하트비트 값 받기 실패시 WS 연결 드랍.)
   auth: 인증 (heartbeat를 먼저 받지 않았다면 WS 연결 드랍.)
