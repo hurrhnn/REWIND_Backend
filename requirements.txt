@@ -30,8 +30,6 @@ certifi==2021.10.8
     #   httpx
 cffi==1.15.0
     # via cryptography
-charset-normalizer==2.0.7
-    # via httpx
 click==8.0.3
     # via flask
 constantly==15.1.0
@@ -55,9 +53,9 @@ greenlet==1.1.2
     # via sqlalchemy
 h11==0.12.0
     # via httpcore
-httpcore==0.14.3
+httpcore==0.15.0
     # via httpx
-httpx==0.21.1
+httpx==0.23.0
     # via flask-mailing
 hyperlink==21.0.0
     # via
@@ -107,7 +105,7 @@ typing-extensions==4.0.0
     #   twisted
 werkzeug==2.0.2
     # via flask
-zope.interface==5.4.0
+zope-interface==5.4.0
     # via twisted
 
 # The following packages are considered to be unsafe in a requirements file:
