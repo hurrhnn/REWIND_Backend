@@ -94,7 +94,7 @@ sniffio==1.2.0
     #   httpx
 sqlalchemy==1.4.27
     # via flask-sqlalchemy
-twisted==21.7.0
+twisted==22.10.0
     # via -r requirements.in
 txaio==21.2.1
     # via autobahn
@@ -107,7 +107,7 @@ typing-extensions==4.0.0
     #   twisted
 werkzeug==2.0.2
     # via flask
-zope.interface==5.4.0
+zope-interface==5.4.0
     # via twisted
 
 # The following packages are considered to be unsafe in a requirements file:
