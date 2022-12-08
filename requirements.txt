@@ -24,7 +24,7 @@ automat==20.2.0
     # via twisted
 blinker==1.4
     # via flask-mailing
-certifi==2021.10.8
+certifi==2022.12.7
     # via
     #   httpcore
     #   httpx
@@ -107,7 +107,7 @@ typing-extensions==4.0.0
     #   twisted
 werkzeug==2.0.2
     # via flask
-zope.interface==5.4.0
+zope-interface==5.4.0
     # via twisted
 
 # The following packages are considered to be unsafe in a requirements file:
