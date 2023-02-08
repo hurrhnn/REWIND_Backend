@@ -36,7 +36,7 @@ click==8.0.3
     # via flask
 constantly==15.1.0
     # via twisted
-cryptography==35.0.0
+cryptography==39.0.1
     # via autobahn
 dnspython==2.1.0
     # via email-validator
@@ -107,7 +107,7 @@ typing-extensions==4.0.0
     #   twisted
 werkzeug==2.0.2
     # via flask
-zope.interface==5.4.0
+zope-interface==5.4.0
     # via twisted
 
 # The following packages are considered to be unsafe in a requirements file:
