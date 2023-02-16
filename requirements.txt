@@ -75,8 +75,10 @@ itsdangerous==2.0.1
     # via flask
 jinja2==3.0.3
     # via flask
-markupsafe==2.0.1
-    # via jinja2
+markupsafe==2.1.2
+    # via
+    #   jinja2
+    #   werkzeug
 pycparser==2.21
     # via cffi
 pydantic==1.8.2
@@ -105,9 +107,9 @@ typing-extensions==4.0.0
     #   flask-mailing
     #   pydantic
     #   twisted
-werkzeug==2.0.2
+werkzeug==2.2.3
     # via flask
-zope.interface==5.4.0
+zope-interface==5.4.0
     # via twisted
 
 # The following packages are considered to be unsafe in a requirements file:
